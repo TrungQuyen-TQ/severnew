@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <!-- Thẻ này CỰC KỲ QUAN TRỌNG cho responsive design -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Đặt Món</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Thêm đoạn này vào bên trong .container -->
+        <div class="header">
+            <h1>Hệ Thống Đặt Món Ăn</h1>
+            <div>
+                <span id="welcome-message"></span>
+                <button id="logout-btn">Đăng Xuất</button>
+            </div>
+        </div>
+        <!-- Phần còn lại của trang -->
+
+        <!-- Màn hình chọn bàn -->
+        <div id="table-selection">
+            <h1>Vui Lòng Chọn Bàn</h1>
+            <div id="table-list" class="grid-container">
+                <!-- JS sẽ render danh sách bàn vào đây -->
+            </div>
+        </div>
+
+        <!-- Màn hình đặt món -->
+        <div id="order-section" class="hidden">
+            <h1 id="current-table-title"></h1>
+            <div class="order-layout">
+                <!-- Phần thực đơn -->
+                <div class="menu-panel">
+                    <h2>Thực Đơn</h2>
+                    <div id="product-list" class="grid-container">
+                        <!-- JS sẽ render thực đơn vào đây -->
+                    </div>
+                </div>
+                <!-- Phần giỏ hàng và thanh toán -->
+                <div class="cart-panel">
+                    <h2>Món Đã Chọn</h2>
+                    <div id="current-order">
+                        <ul id="order-items-list">
+                            <li class="empty-cart">Giỏ hàng đang trống...</li>
+                        </ul>
+                        <p class="total"><strong>Tổng cộng: <span id="total-price">0</span> VND</strong></p>
+                    </div>
+                    <div class="actions">
+                        <button id="update-order-btn">Cập Nhật & Gửi Bếp</button>
+                        <button id="cancel-order-btn">Hủy Món Vừa Chọn</button>
+                        <button id="back-to-tables-btn">Quay Lại Chọn Bàn</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

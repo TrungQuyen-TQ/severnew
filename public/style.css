@@ -1,0 +1,346 @@
+/* ==========================================================================
+   1. CÁC STYLE CƠ BẢN & CHO DI ĐỘNG (MOBILE-FIRST)
+   ========================================================================== */
+:root {
+  --primary-color: #d35400;
+  --secondary-color: #27ae60;
+  --danger-color: #e74c3c;
+  --light-gray: #f4f4f4;
+  --dark-text: #333;
+  --border-color: #ddd;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  background-color: var(--light-gray);
+  margin: 0;
+  padding: 10px; /* Thêm padding cho các cạnh màn hình điện thoại */
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.container {
+  width: 100%;
+  margin: auto;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  box-sizing: border-box; /* Quan trọng để padding không làm tăng width */
+}
+
+h1,
+h2 {
+  text-align: center;
+  color: var(--dark-text);
+}
+
+h1 {
+  color: var(--primary-color);
+  font-size: 1.8em;
+  margin-bottom: 20px;
+}
+
+h2 {
+  font-size: 1.4em;
+  margin-top: 30px;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Bố cục Grid cho danh sách bàn và món ăn */
+.grid-container {
+  display: grid;
+  /* Trên điện thoại, hiển thị 2 cột */
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.item-card {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.item-card:active {
+  /* Hiệu ứng khi nhấn trên mobile */
+  transform: scale(0.95);
+}
+
+.item-card img {
+  width: 100%;
+  height: 120px; /* Cho tất cả ảnh một chiều cao cố định */
+  object-fit: cover; /* Đây là thuộc tính quan trọng nhất! */
+}
+
+.item-card .info {
+  padding: 10px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.item-card h4 {
+  margin: 0 0 5px;
+  color: var(--dark-text);
+  font-size: 0.95em; /* Chữ nhỏ hơn trên mobile */
+}
+
+.item-card p {
+  margin: 0;
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+/* Bố cục trang đặt hàng trên mobile (xếp chồng) */
+.order-layout {
+  display: flex;
+  flex-direction: column; /* Các panel xếp chồng lên nhau */
+  gap: 20px;
+}
+
+.cart-panel {
+  border-top: 2px solid var(--border-color); /* Phân cách bằng đường kẻ trên */
+  padding-top: 20px;
+}
+
+#current-order ul {
+  list-style: none;
+  padding: 0;
+  min-height: 50px;
+}
+
+#current-order li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.empty-cart {
+  color: #888;
+  justify-content: center !important;
+  border-bottom: none;
+}
+
+.total {
+  text-align: right;
+  font-size: 1.1em;
+  color: var(--primary-color);
+  margin-top: 15px;
+}
+
+/* Các nút bấm */
+.actions {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+button {
+  padding: 15px 20px; /* Nút to hơn, dễ bấm hơn trên mobile */
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+#update-order-btn {
+  background-color: var(--secondary-color);
+  color: white;
+}
+#cancel-order-btn {
+  background-color: var(--danger-color);
+  color: white;
+}
+#back-to-tables-btn {
+  background-color: #95a5a6;
+  color: white;
+}
+
+/* ==========================================================================
+   2. RESPONSIVE CHO MÁY TÍNH BẢNG (TABLET)
+   ========================================================================== */
+@media (min-width: 768px) {
+  body {
+    padding: 20px;
+  }
+
+  .container {
+    padding: 30px;
+  }
+
+  /* Tăng số cột trong grid */
+  .grid-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .item-card:hover {
+    /* Thêm hiệu ứng hover cho desktop/tablet */
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Bố cục trang đặt hàng chuyển sang 2 cột */
+  .order-layout {
+    flex-direction: row; /* Các panel nằm cạnh nhau */
+    gap: 30px;
+  }
+
+  .menu-panel {
+    flex: 3; /* Chiếm 3/5 không gian */
+  }
+
+  .cart-panel {
+    flex: 2; /* Chiếm 2/5 không gian */
+    border-top: none; /* Bỏ đường kẻ trên */
+    border-left: 2px solid var(--border-color); /* Thêm đường kẻ trái */
+    padding-top: 0;
+    padding-left: 30px;
+  }
+
+  h1 {
+    font-size: 2.2em;
+  }
+  h2 {
+    font-size: 1.6em;
+  }
+}
+
+/* ==========================================================================
+   3. RESPONSIVE CHO MÁY TÍNH (DESKTOP)
+   ========================================================================== */
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1200px; /* Giới hạn chiều rộng của container */
+  }
+
+  .grid-container {
+    /* Hiển thị nhiều sản phẩm hơn trên màn hình lớn */
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .item-card h4 {
+    font-size: 1em;
+  }
+
+  .item-card p {
+    font-size: 1em;
+  }
+}
+
+/* Style cho trang Login */
+#login-container {
+  max-width: 400px;
+  margin: 80px auto;
+}
+.form-group {
+  margin-bottom: 15px;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+}
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+#login-btn {
+  width: 100%;
+}
+#error-message {
+  color: var(--danger-color);
+  text-align: center;
+  margin-top: 10px;
+  min-height: 1.2em;
+}
+
+/* Style chung cho Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+.header h1 {
+  margin: 0;
+  font-size: 1.8em;
+}
+.header span {
+  margin-right: 15px;
+}
+
+/* Style cho trang Admin */
+.admin-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+@media (min-width: 992px) {
+  .admin-layout {
+    flex-direction: row;
+  }
+  .form-panel {
+    flex: 1;
+  }
+  .list-panel {
+    flex: 2;
+  }
+}
+#admin-product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.product-item-admin {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 5px;
+}
+.product-item-admin img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.product-item-admin .info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+.product-item-admin .actions button {
+  padding: 5px 10px;
+  font-size: 0.9em;
+}
+.edit-btn {
+  background-color: #3498db;
+  color: white;
+}
+.delete-btn {
+  background-color: var(--danger-color);
+  color: white;
+}

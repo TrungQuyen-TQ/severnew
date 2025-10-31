@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang Quản Lý</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Trang Quản Lý Thực Đơn</h1>
+            <div>
+                <span id="welcome-message"></span>
+                <button id="logout-btn">Đăng Xuất</button>
+            </div>
+        </div>
+
+        <div class="admin-layout">
+            <!-- Form để thêm và sửa món ăn -->
+            <div class="form-panel">
+                <h2 id="form-title">Thêm Món Ăn Mới</h2>
+                <form id="product-form">
+                    <input type="hidden" id="product-id">
+                    <div class="form-group">
+                        <label for="product-name">Tên món ăn</label>
+                        <input type="text" id="product-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-price">Giá (VND)</label>
+                        <input type="number" id="product-price" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-image">URL Hình ảnh</label>
+                        <input type="text" id="product-image" placeholder="/images/ten_anh.jpg">
+                    </div>
+                    <button type="submit">Lưu</button>
+                    <button type="button" id="clear-form-btn">Hủy</button>
+                </form>
+            </div>
+
+            <!-- Danh sách các món ăn hiện có -->
+            <div class="list-panel">
+                <h2>Danh Sách Món Ăn</h2>
+                <div id="admin-product-list">
+                    <!-- JS sẽ render danh sách vào đây -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="admin.js"></script>
+</body>
+
+</html>
