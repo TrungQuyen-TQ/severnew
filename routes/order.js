@@ -2,6 +2,9 @@
 /**
  * Created by CTT VNPAY
  */
+const mysql = require("mysql2/promise");
+const dbConfig = config.get('dbConfig');
+
 
 let express = require('express');
 let router = express.Router();
@@ -45,8 +48,41 @@ router.get('/create_payment_url', function (req, res, next) {
     res.render('order', {title: 'Tạo mới đơn hàng', amount: 10000})
 });
 
-router.get('/querydr', function (req, res, next) {
-    res.render('querydr', {title: 'Truy vấn kết quả thanh toán'})
+// TRONG: /routes/order.js
+
+router.post('/querydr', function (req, res, next) {
+    // ... (Giữ nguyên logic tạo request VNPAY) ...
+    
+    request({
+        url: vnpApi,
+        method: "POST",
+        json: true, 	
+        body: dataObj
+    }, function (error, response, body){
+        if (error || !body || response.statusCode !== 200) {
+            // Lỗi kết nối VNPAY
+            return res.status(200).json({ status: 'ERROR', message: 'Lỗi kết nối VNPAY API' });
+        }
+        
+        let vnpResponseCode = body.vnp_ResponseCode; 
+        let vnpStatus = body.vnp_TransactionStatus; 
+        
+        let desktopStatus = 'PENDING';
+        
+        if (vnpResponseCode === '00' && vnpStatus === '00') {
+            desktopStatus = 'PAID'; 
+        } else if (vnpStatus === '01') {
+            desktopStatus = 'PENDING'; // Vẫn chờ thanh toán
+        } else {
+             desktopStatus = 'FAILED';
+        }
+        
+        // TRẢ VỀ JSON CHO JAVA FX
+        res.status(200).json({ 
+            status: desktopStatus,
+            message: 'Truy vấn VNPAY hoàn tất' 
+        });
+    });
 });
 
 router.get('/refund', function (req, res, next) {
@@ -104,81 +140,142 @@ router.post('/create_payment_url', function (req, res, next) {
     });
 });
 
-// routes vnpay_return, vnpay_ipn, querydr, refund được giữ nguyên logic
-// ... (các route còn lại) ...
 
-router.get('/vnpay_return', function (req, res, next) {
+
+// Thêm các import cần thiết (giả định bạn đã import chúng ở đầu file)
+
+router.get('/vnpay_return', async function (req, res, next) { // THÊM ASYNC
     let vnp_Params = req.query;
-
     let secureHash = vnp_Params['vnp_SecureHash'];
+    let orderId = vnp_Params['vnp_TxnRef']; // ID đơn hàng
+    let responseCode = vnp_Params['vnp_ResponseCode'];
+    let transactionStatus = vnp_Params['vnp_TransactionStatus'];
 
     delete vnp_Params['vnp_SecureHash'];
     delete vnp_Params['vnp_SecureHashType'];
 
     vnp_Params = sortObject(vnp_Params);
 
-    let querystring = require('qs');
     let signData = querystring.stringify(vnp_Params, { encode: false });
-    let crypto = require("crypto");     
     let hmac = crypto.createHmac("sha512", secretKey);
-    let signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex");     
+    let signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex");
+
+    const connection = await mysql.createConnection(dbConfig); // KẾT NỐI DB
 
     if(secureHash === signed){
-        //Kiem tra xem du lieu trong db co hop le hay khong va thong bao ket qua
-
-        res.render('success', {code: vnp_Params['vnp_ResponseCode']})
-    } else{
-        res.render('success', {code: '97'})
+        // 1. Kiểm tra trạng thái giao dịch
+        if (responseCode === '00' && transactionStatus === '00') {
+            // Giao dịch thành công => Cập nhật DB
+            try {
+                await connection.execute(
+                    "UPDATE orders SET status = 'PAID' WHERE order_id = ? AND status = 'PENDING'",
+                    [orderId]
+                );
+                // Sau khi cập nhật DB, Polling Service sẽ nhận được PAID
+                res.render('success', { code: '00', message: "Thanh toán thành công. Hệ thống đang cập nhật." });
+            } catch (dbError) {
+                console.error("Lỗi cập nhật DB (PAID):", dbError);
+                res.render('success', { code: '99', message: "Thành công VNPAY nhưng lỗi cập nhật DB." });
+            }
+        } else {
+            // Giao dịch thất bại / hủy bỏ => Cập nhật DB
+            await connection.execute(
+                "UPDATE orders SET status = 'FAILED' WHERE order_id = ? AND status = 'PENDING'",
+                [orderId]
+            );
+            res.render('success', { code: responseCode, message: "Giao dịch thất bại." });
+        }
+    } else {
+        // Sai Secure Hash
+        res.render('success', { code: '97', message: "Sai chữ ký bảo mật." });
     }
+    await connection.end();
 });
 
-router.get('/vnpay_ipn', function (req, res, next) {
+// TRONG: /routes/order.js
+
+router.get('/vnpay_ipn', async function (req, res, next) { // THÊM ASYNC
     let vnp_Params = req.query;
     let secureHash = vnp_Params['vnp_SecureHash'];
     
     let orderId = vnp_Params['vnp_TxnRef'];
+    let vnpAmount = vnp_Params['vnp_Amount'];
     let rspCode = vnp_Params['vnp_ResponseCode'];
+    let transactionStatus = vnp_Params['vnp_TransactionStatus'];
 
     delete vnp_Params['vnp_SecureHash'];
     delete vnp_Params['vnp_SecureHashType'];
 
     vnp_Params = sortObject(vnp_Params);
     
-    let querystring = require('qs');
     let signData = querystring.stringify(vnp_Params, { encode: false });
-    let crypto = require("crypto");     
-    let hmac = crypto.createHmac("sha512", secretKey);
-    let signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex");     
+    let hmac = crypto.createHmac("sha512", secretKey); 	
+    let signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex"); 	
     
-    let paymentStatus = '0'; 
+    const connection = await mysql.createConnection(dbConfig);
     
-    let checkOrderId = true; 
-    let checkAmount = true; 
-    if(secureHash === signed){ 
-        if(checkOrderId){
-            if(checkAmount){
-                if(paymentStatus=="0"){ 
-                    if(rspCode=="00"){
-                        res.status(200).json({RspCode: '00', Message: 'Success'})
-                    }
-                    else {
-                        res.status(200).json({RspCode: '00', Message: 'Success'})
-                    }
-                }
-                else{
-                    res.status(200).json({RspCode: '02', Message: 'This order has been updated to the payment status'})
-                }
-            }
-            else{
-                res.status(200).json({RspCode: '04', Message: 'Amount invalid'})
-            }
-        }       
-        else {
-            res.status(200).json({RspCode: '01', Message: 'Order not found'})
+    try {
+        // Bắt đầu giao dịch (transaction) để đảm bảo tính nhất quán
+        await connection.beginTransaction(); 
+        
+        // 1. Kiểm tra Secure Hash
+        if(secureHash !== signed){ 
+            await connection.commit();
+            return res.status(200).json({RspCode: '97', Message: 'Checksum failed'});
         }
-    }
-    else {
-        res.status(200).json({RspCode: '97', Message: 'Checksum failed'})
+
+        // 2. Truy vấn đơn hàng trong DB
+        const [orders] = await connection.execute(
+            "SELECT id, status, amount FROM orders WHERE order_id = ?", 
+            [orderId]
+        );
+        
+        if (orders.length === 0) {
+            await connection.commit();
+            return res.status(200).json({RspCode: '01', Message: 'Order not found'});
+        }
+
+        const order = orders[0];
+        
+        // 3. Kiểm tra số tiền (Đơn vị: VNĐ)
+        // VNPAY Amount là tiền * 100
+        if (order.amount * 100 !== parseInt(vnpAmount)) { 
+             await connection.commit();
+             return res.status(200).json({RspCode: '04', Message: 'Amount invalid'});
+        }
+
+        // 4. Kiểm tra trạng thái hiện tại (chỉ xử lý nếu đang PENDING)
+        if (order.status !== 'PENDING') {
+            await connection.commit();
+            return res.status(200).json({RspCode: '02', Message: 'This order has been updated to the payment status'});
+        }
+        
+        // 5. Xử lý kết quả VNPAY
+        if (rspCode === '00' && transactionStatus === '00') {
+            // Giao dịch thành công
+            await connection.execute(
+                "UPDATE orders SET status = 'PAID' WHERE id = ?",
+                [order.id]
+            );
+            await connection.commit();
+            return res.status(200).json({RspCode: '00', Message: 'Success'});
+
+        } else {
+            // Giao dịch thất bại
+            await connection.execute(
+                "UPDATE orders SET status = 'FAILED' WHERE id = ?",
+                [order.id]
+            );
+            await connection.commit();
+            return res.status(200).json({RspCode: '00', Message: 'Success (Updated FAILED)'});
+        }
+    
+    } catch (dbError) {
+        console.error("Lỗi xử lý IPN:", dbError);
+        await connection.rollback(); // Rollback nếu có lỗi
+        res.status(200).json({RspCode: '99', Message: 'Unknown error'});
+    } finally {
+        if (connection) await connection.end();
     }
 });
 
