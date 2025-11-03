@@ -36,11 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.setItem("username", data.username);
 
       // Chuyển hướng
-      if (data.role === "admin") {
-        window.location.href = `${BACKEND_URL}/admin.html`; // Ví dụ: http://localhost:3000/admin.html
-      } else {
-        window.location.href = `${BACKEND_URL}/index.html`;
-      }
+      if (data.role === "admin") { window.location.href = `${BACKEND_URL}/admin.html`; } else if (data.role === "chef") { location.href = `${BACKEND_URL}/chef.html`; } else { window.location.href = `${BACKEND_URL}/index.html`; }
     } catch (error) {
       errorMessage.textContent = error.message;
     }
