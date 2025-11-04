@@ -2,6 +2,7 @@
 /**
  * Created by CTT VNPAY
  */
+const config = require('config');
 const mysql = require("mysql2/promise");
 const dbConfig = config.get('dbConfig');
 
@@ -11,7 +12,7 @@ let router = express.Router();
 // Bỏ jquery
 const request = require('request');
 const moment = require('moment');
-const config = require('config');
+
 const crypto = require("crypto");
 const querystring = require('qs');
 
