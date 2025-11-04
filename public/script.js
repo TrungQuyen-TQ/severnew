@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentTableTitle = document.getElementById("current-table-title");
   const orderItemsList = document.getElementById("order-items-list");
   const totalPriceSpan = document.getElementById("total-price");
+  const orderNoteTextarea = document.getElementById("order-note");
 
   const updateOrderBtn = document.getElementById("update-order-btn");
   const cancelOrderBtn = document.getElementById("cancel-order-btn");
@@ -154,17 +155,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     let totalPrice = 0;
-    newOrderItems.forEach((item) => {
+    for (let index = 0; index < newOrderItems.length; index++) {
+      const item = newOrderItems[index];
       const li = document.createElement("li");
       li.innerHTML = `
-                <span>${item.name} x ${item.quantity}</span>
-                <span>${(
-                  item.price * item.quantity
-                ).toLocaleString()} VND</span>
+      <div class="cart-item-info">
+                    <span>${item.name} x ${item.quantity}</span>
+                    <span>${(
+                      item.price * item.quantity
+                    ).toLocaleString()} VND</span>
+                </div>
+                <div class="cart-item-note">
+                    <input type="text" class="note-input" data-index="${index}" value="${
+        item.note || ""
+      }" placeholder="Thêm ghi chú...">
+                </div>
             `;
       orderItemsList.appendChild(li);
       totalPrice += item.price * item.quantity;
-    });
+    }
+    // Hiển thị tổng tiền
     totalPriceSpan.textContent = totalPrice.toLocaleString();
   }
 
@@ -172,7 +182,18 @@ document.addEventListener("DOMContentLoaded", () => {
   function resetOrder() {
     newOrderItems = [];
     renderNewOrderItems();
+    if (orderNoteTextarea) orderNoteTextarea.value = "";
   }
+
+  // Sự kiện để lưu ghi chú khi người dùng gõ cho từng item
+  orderItemsList.addEventListener("input", (e) => {
+    if (e.target.classList && e.target.classList.contains("note-input")) {
+      const index = parseInt(e.target.dataset.index, 10);
+      if (!isNaN(index) && newOrderItems[index]) {
+        newOrderItems[index].note = e.target.value;
+      }
+    }
+  });
 
   // Hàm gửi các món đã chọn lên server
   async function submitOrder() {
@@ -186,7 +207,9 @@ document.addEventListener("DOMContentLoaded", () => {
       items: newOrderItems.map((item) => ({
         product_id: item.product_id,
         quantity: item.quantity,
+        note: item.note || null,
       })),
+      note: orderNoteTextarea ? orderNoteTextarea.value : "",
     };
 
     try {
