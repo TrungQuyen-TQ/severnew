@@ -13,7 +13,6 @@ const JWT_SECRET = config.get("JWT_SECRET");
 // === API ĐĂNG NHẬP (/api/login) ===
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  // LƯU Ý: Vẫn cần BCRYPT để bảo mật! Tôi giữ nguyên logic so sánh cũ để bạn thấy rõ nguồn.
   try {
     const connection = await mysql.createConnection(dbConfig);
     const [users] = await connection.execute(
