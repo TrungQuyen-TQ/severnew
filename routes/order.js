@@ -122,9 +122,9 @@ router.post('/create_payment_url', function (req, res, next) {
     vnp_Params['vnp_ReturnUrl'] = returnUrl; // Dùng hằng số từ config
     vnp_Params['vnp_IpAddr'] = ipAddr;
     vnp_Params['vnp_CreateDate'] = createDate;
-    if(bankCode) {
-        vnp_Params['vnp_BankCode'] = bankCode;
-    }
+    // if(bankCode) {
+    //     vnp_Params['vnp_BankCode'] = bankCode;
+    // }
 
     vnp_Params = sortObject(vnp_Params);
 
