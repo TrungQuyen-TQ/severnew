@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const username = localStorage.getItem("username");
 
   // BẢO VỆ TRANG: Kiểm tra đăng nhập và vai trò
-  if (!token || userRole !== "admin") {
+  if (!token || userRole !== "manager") {
     alert("Truy cập bị từ chối!");
     localStorage.clear();
     window.location.href = "/login.html";
