@@ -11,6 +11,9 @@ var cors = require('cors');
 // Import các routes đã tách
 var orderRouter = require('./routes/order');
 var apiRouter = require('./routes/api'); 
+var revenueRouter = require('./routes/revenue'); 
+const revenueByCategoryRouter = require('./routes/revenueByCategory');
+const topProductsRouter = require('./routes/topProducts');
 
 var app = express();
 
@@ -37,6 +40,11 @@ app.get('/', function(req, res, next) {
 // 2. Đăng ký Router API và VNPAY
 app.use('/order', orderRouter); // Routes VNPAY
 app.use('/api', apiRouter);     // Routes Quản lý Món ăn/Login
+app.use('/api/revenue', revenueRouter); // // Routes chủ nhà hàng
+app.use('/api/revenue', revenueByCategoryRouter); // Routes doanh thu theo danh mục
+app.use('/api/top-products', topProductsRouter); // Routes top sản phẩm bán chạy
+
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
