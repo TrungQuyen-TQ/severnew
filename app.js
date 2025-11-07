@@ -32,10 +32,11 @@ app.use(express.static(path.join(__dirname)));
 
 // === ĐĂNG KÝ ROUTES ===
 
-// 1. Route gốc: Chuyển hướng đến trang VNPAY mặc định
-app.get('/', function(req, res, next) {
-    res.redirect('/order'); 
+app.get('/', (req, res) => {
+    console.log('📩 Route / was triggered');
+    res.send('Server is running successfully 🚀');
 });
+
 
 // 2. Đăng ký Router API và VNPAY
 app.use('/order', orderRouter); // Routes VNPAY
