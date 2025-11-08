@@ -144,7 +144,8 @@ router.post(
 
 router.get("/chef/pending-meals", authenticateToken, async (req, res) => {
   // Thêm check role 'chef' nếu bạn có hàm checkRole riêng
-  if (req.user.role !== "chef") {
+  console.log("DEBUG: User role in /chef/pending-meals:", req.user.role);
+  if (req.user.role !== "CHEF") {
     return res
       .status(403)
       .json({ error: "Truy cập bị từ chối. Chỉ dành cho Đầu bếp." });
@@ -189,7 +190,8 @@ router.put(
   authenticateToken,
   async (req, res) => {
     // Thêm check role 'chef' nếu bạn có hàm checkRole riêng
-    if (req.user.role !== "chef") {
+    console.log("DEBUG: User role in /chef/serve-order:", req.user.role);
+    if (req.user.role !== "CHEF") {
       return res
         .status(403)
         .json({ error: "Truy cập bị từ chối. Chỉ dành cho Đầu bếp." });
