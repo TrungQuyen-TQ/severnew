@@ -16,13 +16,13 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // GET all tables
-router.get("/", authMiddleware(["MANAGER"]), async (req, res) => {
+router.get("/", authMiddleware(["MANAGER", "EMPLOYEE"]), async (req, res) => {
   const [rows] = await pool.execute("SELECT * FROM tables");
   res.json(rows);
 });
 
 // CREATE table
-router.post("/", authMiddleware(["MANAGER"]), upload.single("image"), async (req, res) => {
+router.post("/", authMiddleware(["MANAGER","EMPLOYEE"]), upload.single("image"), async (req, res) => {
   const { name, status } = req.body;
   const image = req.file ? "/uploads/" + req.file.filename : null;
   await pool.execute(

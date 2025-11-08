@@ -4,6 +4,7 @@ let router = express.Router();
 const mysql = require("mysql2/promise");
 const jwt = require("jsonwebtoken");
 const config = require("config");
+const { authMiddleware } = require("./auth.js");
 const { authenticateToken, authorizeAdmin } = require("../middlewares/auth");
 
 // Lấy cấu hình từ default.json
@@ -38,149 +39,109 @@ router.get("/products", authenticateToken, async (req, res) => {
 });
 
 // API tạo đơn hàng mới (POST /api/order) - Chỉ dành cho nhân viên và admin
-router.post("/order", authenticateToken, async (req, res) => {
-  // Kiểm tra role: chỉ employee và admin mới được đặt món
-  if (req.user.role !== "employee" && req.user.role !== "admin") {
-    return res.status(403).json({
-      error: "Chỉ nhân viên phục vụ mới có quyền đặt món.",
-    });
-  }
-  const { table_id, items } = req.body;
+router.post(
+  "/order",
+  authMiddleware(["EMPLOYEE", "ADMIN"]), // Chỉ cho phép EMPLOYEE hoặc ADMIN
+  async (req, res) => {
+    const { table_id, items, note } = req.body;
+    
+    // Lấy thông tin người dùng từ token sau khi authMiddleware chạy
+    // Role đã được kiểm tra, ta chỉ cần lấy ID
+    const userId = req.user.id; 
 
-  // Validate dữ liệu đầu vào
-  if (!table_id || !items || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({
-      error:
-        "Dữ liệu đơn hàng không hợp lệ. Yêu cầu table_id và ít nhất một món.",
-    });
-  }
-
-  const connection = await mysql.createConnection(dbConfig);
-  try {
-    // Bắt đầu transaction
-    await connection.beginTransaction();
-
-    // 1. Tạo order mới với trạng thái PENDING
-    const [orderResult] = await connection.execute(
-      "INSERT INTO orders (table_id, status, created_at) VALUES (?, 'PENDING', NOW())",
-      [table_id]
-    );
-    const orderId = orderResult.insertId;
-
-    // 2. Thêm từng món vào order_details
-    for (const item of items) {
-      await connection.execute(
-        "INSERT INTO order_details (order_id, product_id, quantity, note) VALUES (?, ?, ?, ?)",
-        [orderId, item.product_id, item.quantity, item.note || null]
-      );
-
-      // (Tùy chọn) Cập nhật số lượng tồn kho của sản phẩm
-      await connection.execute(
-        "UPDATE products SET quantity = GREATEST(0, quantity - ?) WHERE id = ?",
-        [item.quantity, item.product_id]
-      );
+    // Validate dữ liệu đầu vào
+    if (!table_id || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        error:
+          "Dữ liệu đơn hàng không hợp lệ. Yêu cầu table_id và ít nhất một món.",
+      });
     }
 
-    // Nếu mọi thứ OK, commit transaction
-    await connection.commit();
-
-    // Phản hồi thành công
-    res.status(201).json({
-      success: true,
-      message: "Đã tạo đơn hàng thành công.",
-      data: { orderId },
-    });
-  } catch (error) {
-    // Nếu có lỗi, rollback mọi thay đổi
-    await connection.rollback();
-    console.error("Lỗi khi tạo đơn hàng:", error);
-    res.status(500).json({
-      error: "Không thể tạo đơn hàng. Vui lòng thử lại sau.",
-    });
-  } finally {
-    // Luôn đóng kết nối DB
-    await connection.end();
-  }
-});
-
-// === API CHỈ DÀNH CHO ADMIN ===
-
-// Thêm món ăn mới
-router.post(
-  "/products",
-  authenticateToken,
-  authorizeAdmin,
-  async (req, res) => {
-    // Logic POST /api/products từ server.js
-    const { name, price, image_url } = req.body;
+    const connection = await mysql.createConnection(dbConfig);
     try {
-      const connection = await mysql.createConnection(dbConfig);
-      const [result] = await connection.execute(
-        "INSERT INTO products (name, price, image_url) VALUES (?, ?, ?)",
-        [name, price, image_url]
+      // Bắt đầu transaction
+      await connection.beginTransaction();
+
+      // 1. Tạo order mới với trạng thái PENDING
+      // Chèn table_id, user_id (người tạo đơn), status và note
+      const [orderResult] = await connection.execute(
+        "INSERT INTO orders (table_id, user_id, status, note, created_at) VALUES (?, ?, 'PENDING', ?, NOW())",
+        [table_id, userId, note || null]
       );
-      await connection.end();
+      const orderId = orderResult.insertId;
+
+      // 2. Thêm từng món vào order_details
+      for (const item of items) {
+        // Lấy giá sản phẩm từ DB (Bảo mật: không tin tưởng giá từ Frontend)
+        const [productRows] = await connection.execute(
+            "SELECT price FROM products WHERE id = ?", 
+            [item.product_id]
+        );
+        
+        if (productRows.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: `Không tìm thấy sản phẩm có ID: ${item.product_id}` });
+        }
+        
+        const price = productRows[0].price;
+
+        await connection.execute(
+          "INSERT INTO order_details (order_id, product_id, quantity, price, note) VALUES (?, ?, ?, ?, ?)",
+          [orderId, item.product_id, item.quantity, price, item.note || null]
+        );
+
+        // CẬP NHẬT TỒN KHO
+        await connection.execute(
+          "UPDATE products SET quantity = GREATEST(0, quantity - ?) WHERE id = ?",
+          [item.quantity, item.product_id]
+        );
+      }
+
+      // 3. TÍNH TOÁN VÀ CẬP NHẬT total_amount
+      const [totalResult] = await connection.execute(
+        "SELECT SUM(quantity * price) AS total FROM order_details WHERE order_id = ?",
+        [orderId]
+      );
+      const totalAmount = totalResult[0].total || 0;
+      
+      await connection.execute(
+          "UPDATE orders SET total_amount = ? WHERE id = ?",
+          [totalAmount, orderId]
+      );
+
+      // 4. CẬP NHẬT TRẠNG THÁI BÀN
+      await connection.execute(
+        "UPDATE tables SET status = 'Có khách' WHERE id = ?",
+        [table_id]
+      );
+
+
+      // Nếu mọi thứ OK, commit transaction
+      await connection.commit();
+
+      // Phản hồi thành công
       res.status(201).json({
         success: true,
-        message: "Thêm món ăn thành công!",
-        insertedId: result.insertId,
+        message: "Đã tạo đơn hàng thành công.",
+        data: { orderId, totalAmount },
       });
     } catch (error) {
-      console.error("Lỗi API [POST /api/products]:", error);
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
-
-// Sửa món ăn (PUT /api/products/:id)
-router.put(
-  "/products/:id",
-  authenticateToken,
-  authorizeAdmin,
-  async (req, res) => {
-    // Logic PUT /api/products/:id từ server.js
-    const { id } = req.params;
-    const { name, price, image_url } = req.body;
-    try {
-      const connection = await mysql.createConnection(dbConfig);
-      await connection.execute(
-        "UPDATE products SET name = ?, price = ?, image_url = ? WHERE id = ?",
-        [name, price, image_url, id]
-      );
+      // Nếu có lỗi, rollback mọi thay đổi
+      await connection.rollback();
+      console.error("Lỗi khi tạo đơn hàng:", error);
+      res.status(500).json({
+        error: "Không thể tạo đơn hàng. Vui lòng thử lại sau.",
+      });
+    } finally {
+      // Luôn đóng kết nối DB
       await connection.end();
-      res.json({ success: true, message: "Cập nhật món ăn thành công!" });
-    } catch (error) {
-      console.error(`Lỗi API [PUT /api/products/${id}]:`, error);
-      res.status(500).json({ error: error.message });
     }
   }
 );
 
-// Xóa món ăn (DELETE /api/products/:id)
-router.delete(
-  "/products/:id",
-  authenticateToken,
-  authorizeAdmin,
-  async (req, res) => {
-    // Logic DELETE /api/products/:id từ server.js
-    const { id } = req.params;
-    try {
-      const connection = await mysql.createConnection(dbConfig);
-      await connection.execute("DELETE FROM products WHERE id = ?", [id]);
-      await connection.end();
-      res.json({ success: true, message: "Xóa món ăn thành công!" });
-    } catch (error) {
-      console.error(`Lỗi API [DELETE /api/products/${id}]:`, error);
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
 
-// Thêm đoạn này vào cuối file /routes/api.js (trước dòng module.exports = router;)
 
-// === API CHỈ DÀNH CHO ĐẦU BẾP (CHEF) ===
 
-// Chức năng A: Tải danh sách món ăn đang chờ (PENDING)
 router.get("/chef/pending-meals", authenticateToken, async (req, res) => {
   // Thêm check role 'chef' nếu bạn có hàm checkRole riêng
   if (req.user.role !== "chef") {

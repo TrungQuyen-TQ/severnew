@@ -8,6 +8,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 
 // Import các routes
+const apiRouter = require('./routes/api');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const productsRouter = require('./routes/products');
@@ -24,6 +25,7 @@ function unwrapModule(m) {
     return (m && m.__esModule && m.default) ? m.default : (m && m.default) ? m.default : m;
 }
 
+const _apiRouter = unwrapModule(apiRouter);
 const _authRouter = unwrapModule(authRouter);
 const _usersRouter = unwrapModule(usersRouter);
 const _productsRouter = unwrapModule(productsRouter);
@@ -54,6 +56,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // phục 
 app.get('/', (req, res) => {
     res.send('Server is running successfully 🚀');
 });
+// API routes
+app.use('/api', _apiRouter);
 
 // Auth
 // Auth
