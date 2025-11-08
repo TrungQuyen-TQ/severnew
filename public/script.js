@@ -46,18 +46,45 @@ document.addEventListener("DOMContentLoaded", () => {
   // 3. CÁC HÀM XỬ LÝ LOGIC CHÍNH
   // ==========================================================================
 
-  // Hàm trợ giúp: Tạo một card hiển thị (dùng cho cả bàn và món ăn)
-  function createCard(item, onClick, isProduct = false) {
+  // Hàm tạo card cho MÓN (giữ nguyên hiển thị ảnh)
+  function createProductCard(product, onClick) {
     const card = document.createElement("div");
     card.className = "item-card";
-    const imageUrl = item.image_url || "/images/default-food.png";
+    const imageUrl = product.image_url || "/images/default-food.png";
     card.innerHTML = `
-            <img src="${imageUrl}" alt="${item.name}">
+            <img src="${imageUrl}" alt="${product.name}">
             <div class="info">
-                <h4>${item.name}</h4>
-                ${isProduct ? `<p>${item.price.toLocaleString()} VND</p>` : ""}
+                <h4>${product.name}</h4>
+                <p>${product.price.toLocaleString()} VND</p>
             </div>
         `;
+    card.addEventListener("click", onClick);
+    return card;
+  }
+
+  // Hàm tạo card cho BÀN:
+  function createTableCard(table, onClick) {
+    const card = document.createElement("div");
+    card.className = "item-card table-card";
+
+    // Lấy số bàn:
+    let number = table.id || "";
+    console.log("Table id:", table.id);
+    if (!number && table.name) {
+      const m = table.name.match(/\d+/);
+      number = m ? m[0] : table.name;
+    }
+
+    // Chọn màu theo trạng thái
+    let bgColor = "#bdc3c7"; // mặc định xám
+    if (table.status === "Trống") bgColor = "#2ecc71"; // xanh
+    else if (table.status === "Có khách") bgColor = "#e74c3c"; // đỏ
+    else if (table.status === "Đã đặt") bgColor = "#f39c12"; // cam
+
+    card.innerHTML = `
+      <div class="table-number" style="background:${bgColor};">${number}</div>
+    `;
+
     card.addEventListener("click", onClick);
     return card;
   }
@@ -80,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const tables = await response.json();
       tableListDiv.innerHTML = "";
       tables.forEach((table) => {
-        const tableCard = createCard(table, () => selectTable(table));
+        const tableCard = createTableCard(table, () => selectTable(table));
         tableListDiv.appendChild(tableCard);
       });
     } catch (error) {
@@ -105,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const products = await response.json();
       productListDiv.innerHTML = "";
       products.forEach((product) => {
-        const productCard = createCard(
+        const productCard = createProductCard(
           product,
           () => addToOrder(product),
           true
