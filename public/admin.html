@@ -1,56 +1,87 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang Quản Lý</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Dashboard Quản lý Nhà hàng</title>
+    <style>
+        /* CSS Dùng chung cho Tab và Modal */
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        header { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #ccc; }
+        .tab-container { display: flex; margin-bottom: 20px; border-bottom: 2px solid #ccc; }
+        .tab-button { padding: 10px 20px; cursor: pointer; border: none; background: #f1f1f1; margin-right: 5px; border-radius: 5px 5px 0 0; }
+        .tab-button.active { background-color: #4CAF50; color: white; }
+        .tab-content { display: none; padding-top: 20px; }
+        .tab-content.active { display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        
+        /* CSS cho Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 600px; border-radius: 8px; }
+        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close-btn:hover, .close-btn:focus { color: black; text-decoration: none; cursor: pointer; }
+        .form-group label { display: block; margin-top: 10px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .modal button[type="submit"] { margin-top: 20px; padding: 10px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
 </head>
-
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Trang Quản Lý Thực Đơn</h1>
-            <div>
-                <span id="welcome-message"></span>
-                <button id="logout-btn">Đăng Xuất</button>
-            </div>
-        </div>
+    <header>
+        <button onclick="logout()" style="float: right; padding: 10px; background-color: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Đăng Xuất</button>
+        <h1>Quản lý Hệ thống</h1>
+        <p>Xin chào: <strong id="currentUsernameDisplay"></strong> | Vai trò: <strong id="userRoleDisplay"></strong></p>
+    </header>
 
-        <div class="admin-layout">
-            <!-- Form để thêm và sửa món ăn -->
-            <div class="form-panel">
-                <h2 id="form-title">Thêm Món Ăn Mới</h2>
-                <form id="product-form">
-                    <input type="hidden" id="product-id">
-                    <div class="form-group">
-                        <label for="product-name">Tên món ăn</label>
-                        <input type="text" id="product-name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="product-price">Giá (VND)</label>
-                        <input type="number" id="product-price" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="product-image">URL Hình ảnh</label>
-                        <input type="text" id="product-image" placeholder="/images/ten_anh.jpg">
-                    </div>
-                    <button type="submit">Lưu</button>
-                    <button type="button" id="clear-form-btn">Hủy</button>
+    <hr>
+
+    <div class="tab-container">
+        <button class="tab-button active" onclick="openTab(event, 'Products')">🍔 Món ăn</button>
+        <button class="tab-button" onclick="openTab(event, 'Tables')">🍽️ Bàn</button>
+        <button class="tab-button" onclick="openTab(event, 'Users')">👥 Người dùng</button>
+    </div>
+
+    <div id="Products" class="tab-content active">
+        <h3>Quản lý Món ăn (Products)</h3>
+        <button onclick="openModal('product', 'create')">➕ Thêm Món ăn mới</button>
+        <table id="productsTable">
+            <thead><tr><th>ID</th><th>Tên</th><th>Giá</th><th>Số lượng</th><th>Ảnh</th><th>Thao tác</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <p id="productsStatus" style="margin-top: 10px;"></p>
+    </div>
+
+    <div id="Tables" class="tab-content">
+        <h3>Quản lý Bàn (Tables)</h3>
+        <button onclick="openModal('table', 'create')">➕ Thêm Bàn mới</button>
+        <table id="tablesTable">
+            <thead><tr><th>ID</th><th>Tên Bàn</th><th>Trạng thái</th><th>Ảnh</th><th>Thao tác</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <p id="tablesStatus" style="margin-top: 10px;"></p>
+    </div>
+
+    <div id="Users" class="tab-content">
+        <h3>Quản lý Người dùng (Users)</h3>
+        <button onclick="openModal('user', 'create')">➕ Thêm Người dùng mới</button>
+        <table id="usersTable">
+            <thead><tr><th>ID</th><th>Username</th><th>Vai trò</th><th>Thao tác</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <p id="usersStatus" style="margin-top: 10px;"></p>
+    </div>
+
+    <div id="crudModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h4 id="modalTitle"></h4>
+            <form id="crudForm" enctype="multipart/form-data">
                 </form>
-            </div>
-
-            <!-- Danh sách các món ăn hiện có -->
-            <div class="list-panel">
-                <h2>Danh Sách Món Ăn</h2>
-                <div id="admin-product-list">
-                    <!-- JS sẽ render danh sách vào đây -->
-                </div>
-            </div>
+            <p id="modalMessage" style="color: red;"></p>
         </div>
     </div>
-    <script src="admin.js"></script>
-</body>
 
+    <script src="admin_dashboard.js"></script>
+</body>
 </html>

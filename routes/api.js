@@ -10,41 +10,6 @@ const { authenticateToken, authorizeAdmin } = require("../middlewares/auth");
 const dbConfig = config.get("dbConfig");
 const JWT_SECRET = config.get("JWT_SECRET");
 
-// === API ĐĂNG NHẬP (/api/login) ===
-router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    const connection = await mysql.createConnection(dbConfig);
-    const [users] = await connection.execute(
-      "SELECT * FROM users WHERE username = ?",
-      [username]
-    );
-    await connection.end();
-
-    if (users.length === 0) {
-      return res
-        .status(401)
-        .json({ error: "Tên đăng nhập hoặc mật khẩu không đúng." });
-    }
-    const user = users[0];
-    if (password !== user.password) {
-      return res
-        .status(401)
-        .json({ error: "Tên đăng nhập hoặc mật khẩu không đúng." });
-    }
-    const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "8h" }
-    );
-    res.json({ token, role: user.role, username: user.username });
-  } catch (error) {
-    console.error("Lỗi đăng nhập:", error);
-    res.status(500).json({ error: "Lỗi máy chủ" });
-  }
-});
-
-// === API CHO TẤT CẢ NHÂN VIÊN (YÊU CẦU ĐĂNG NHẬP) ===
 
 router.get("/tables", authenticateToken, async (req, res) => {
   try {
