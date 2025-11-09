@@ -4,14 +4,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================================================
   // 1. KIỂM TRA ĐĂNG NHẬP VÀ LẤY THÔNG TIN
   // ==========================================================================
-const username = localStorage.getItem("currentUsername");
+  const username = localStorage.getItem("currentUsername");
 
   // BẢO VỆ TRANG: Nếu không có token (chưa đăng nhập), chuyển về trang login
 
   // ==========================================================================
   // 2. KHAI BÁO BIẾN VÀ LẤY CÁC ELEMENT TỪ HTML
   // ==========================================================================
-const apiBaseUrl = "http://localhost:3000/api";
+  const apiBaseUrl = "http://localhost:3000/api";
 
   const tableSelectionDiv = document.getElementById("table-selection");
   const orderSectionDiv = document.getElementById("order-section");
@@ -41,33 +41,71 @@ const apiBaseUrl = "http://localhost:3000/api";
   // 3. CÁC HÀM XỬ LÝ LOGIC CHÍNH
   // ==========================================================================
 
-  // Hàm trợ giúp: Tạo một card hiển thị (dùng cho cả bàn và món ăn)
-function createCard(item, onClick, isProduct = false) {
+  // Hàm tạo card cho MÓN (giữ nguyên hiển thị ảnh)
+  function createProductCard(product, onClick) {
     const card = document.createElement("div");
     card.className = "item-card";
-    const imageUrl = item.image_url || "/images/default-food.png";
+    const imageUrl = product.image_url || "/images/default-food.png";
+    let disabled = product.quantity === 0;
     card.innerHTML = `
-        <img src="${imageUrl}" alt="${item.name}">
-        <div class="info">
-          <h4>${item.name}</h4>
-          ${isProduct ? `<p>${item.price.toLocaleString()} VND</p>` : ""}
-        </div>
-      `;
+      <img src="${imageUrl}" alt="${product.name}" ${
+      disabled ? 'style="filter: grayscale(1); opacity:0.5;"' : ""
+    }>
+      <div class="info">
+        <h4>${product.name}</h4>
+        <p>${product.price.toLocaleString()} VND</p>
+        ${disabled ? '<span class="soldout-label">Hết hàng</span>' : ""}
+      </div>
+    `;
+    if (!disabled) {
+      card.addEventListener("click", onClick);
+    } else {
+      card.classList.add("disabled-product");
+      card.style.pointerEvents = "none";
+    }
+    return card;
+  }
+
+  // Hàm tạo card cho BÀN:
+  function createTableCard(table, onClick) {
+    const card = document.createElement("div");
+    card.className = "item-card table-card";
+
+    // Lấy số bàn:
+    let number = table.id || "";
+    console.log("Table id:", table.id);
+    if (!number && table.name) {
+      const m = table.name.match(/\d+/);
+      number = m ? m[0] : table.name;
+    }
+
+    // Chọn màu theo trạng thái
+    let bgColor = "#bdc3c7"; // mặc định xám
+    if (table.status === "Trống") bgColor = "#2ecc71"; // xanh
+    else if (table.status === "Có khách") bgColor = "#e74c3c"; // đỏ
+    else if (table.status === "Đã đặt") bgColor = "#f39c12"; // cam
+
+    card.innerHTML = `
+      <div class="table-number" style="background:${bgColor};">${number}</div>
+    `;
+
     card.addEventListener("click", onClick);
     return card;
   }
 
   // Hàm tải và hiển thị danh sách bàn
-async function loadTables() {
+  async function loadTables() {
     try {
       const response = await fetch(`${apiBaseUrl}/tables`, {
         // **THAY ĐỔI:** Bỏ header Authorization, thêm credentials
-        credentials: "include", 
+        credentials: "include",
       });
 
       // BẢO VỆ TRANG BẰNG CÁCH XỬ LÝ LỖI PHẢN HỒI
       if (response.status === 401 || response.status === 403) {
-        alert("Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+        alert(
+          "Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại."
+        );
         logout(); // Chuyển hướng người dùng
         return;
       }
@@ -76,7 +114,7 @@ async function loadTables() {
       const tables = await response.json();
       tableListDiv.innerHTML = "";
       tables.forEach((table) => {
-        const tableCard = createCard(table, () => selectTable(table));
+        const tableCard = createTableCard(table, () => selectTable(table));
         tableListDiv.appendChild(tableCard);
       });
     } catch (error) {
@@ -89,7 +127,7 @@ async function loadTables() {
     try {
       const response = await fetch(`${apiBaseUrl}/products`, {
         // **THAY ĐỔI:** Bỏ header Authorization, thêm credentials
-        credentials: "include", 
+        credentials: "include",
       });
 
       if (response.status === 401 || response.status === 403) {
@@ -104,7 +142,7 @@ async function loadTables() {
       const products = await response.json();
       productListDiv.innerHTML = "";
       products.forEach((product) => {
-        const productCard = createCard(
+        const productCard = createProductCard(
           product,
           () => addToOrder(product),
           true
@@ -220,10 +258,10 @@ async function loadTables() {
         headers: {
           "Content-Type": "application/json",
           // **THAY ĐỔI:** Bỏ header Authorization
-          // Authorization: `Bearer ${token}`, 
+          // Authorization: `Bearer ${token}`,
         },
         // **THAY ĐỔI:** Thêm credentials để gửi cookie
-        credentials: "include", 
+        credentials: "include",
         body: JSON.stringify(orderData),
       });
 
@@ -240,7 +278,24 @@ async function loadTables() {
       }
 
       alert(result.message || "Cập nhật đơn hàng thành công!");
-      resetOrder(); 
+      // Sau khi gửi đơn hàng, cập nhật trạng thái bàn thành "Có khách"
+      if (currentTable && currentTable.id) {
+        try {
+          await fetch(`${apiBaseUrl}/tables/${currentTable.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ status: "Có khách" }),
+          });
+        } catch (e) {
+          console.error("Lỗi cập nhật trạng thái bàn:", e);
+        }
+      }
+      resetOrder(); // Xóa giỏ hàng sau khi gửi thành công
+      // Reload lại danh sách bàn để cập nhật màu
+      loadTables();
     } catch (error) {
       console.error("Lỗi gửi đơn hàng:", error);
       alert(error.message);
@@ -258,21 +313,21 @@ async function loadTables() {
   }
 
   // Hàm xử lý đăng xuất
-async function logout() {
+  async function logout() {
     // 1. Gửi yêu cầu đến server để xóa HttpOnly Cookie (Server phải thiết lập endpoint /api/logout)
     try {
-        await fetch(`${apiBaseUrl}/logout`, { 
-            method: "POST", 
-            credentials: "include" 
-        });
+      await fetch(`${apiBaseUrl}/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
     } catch (error) {
-        console.error("Lỗi khi gọi API logout:", error);
-        // Server có thể đã down hoặc gặp lỗi, vẫn tiếp tục xóa local storage và chuyển hướng
+      console.error("Lỗi khi gọi API logout:", error);
+      // Server có thể đã down hoặc gặp lỗi, vẫn tiếp tục xóa local storage và chuyển hướng
     }
-    
+
     // 2. Xóa các thông tin không nhạy cảm đã lưu
-    localStorage.removeItem("currentUsername"); 
-    localStorage.removeItem("userRole"); 
+    localStorage.removeItem("currentUsername");
+    localStorage.removeItem("userRole");
 
     // 3. Chuyển hướng
     window.location.href = "/login.html";
