@@ -4,14 +4,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================================================
   // 1. KIỂM TRA ĐĂNG NHẬP VÀ LẤY THÔNG TIN
   // ==========================================================================
-  const token = localStorage.getItem("token");
-  const username = localStorage.getItem("username");
+  const username = localStorage.getItem("currentUsername");
 
   // BẢO VỆ TRANG: Nếu không có token (chưa đăng nhập), chuyển về trang login
-  if (!token) {
-    window.location.href = "/login.html";
-    return; // Dừng toàn bộ việc thực thi script nếu chưa đăng nhập
-  }
 
   // ==========================================================================
   // 2. KHAI BÁO BIẾN VÀ LẤY CÁC ELEMENT TỪ HTML
@@ -51,14 +46,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const card = document.createElement("div");
     card.className = "item-card";
     const imageUrl = product.image_url || "/images/default-food.png";
+    let disabled = product.quantity === 0;
     card.innerHTML = `
-            <img src="${imageUrl}" alt="${product.name}">
-            <div class="info">
-                <h4>${product.name}</h4>
-                <p>${product.price.toLocaleString()} VND</p>
-            </div>
-        `;
-    card.addEventListener("click", onClick);
+      <img src="${imageUrl}" alt="${product.name}" ${
+      disabled ? 'style="filter: grayscale(1); opacity:0.5;"' : ""
+    }>
+      <div class="info">
+        <h4>${product.name}</h4>
+        <p>${product.price.toLocaleString()} VND</p>
+        ${disabled ? '<span class="soldout-label">Hết hàng</span>' : ""}
+      </div>
+    `;
+    if (!disabled) {
+      card.addEventListener("click", onClick);
+    } else {
+      card.classList.add("disabled-product");
+      card.style.pointerEvents = "none";
+    }
     return card;
   }
 
@@ -93,13 +97,16 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadTables() {
     try {
       const response = await fetch(`${apiBaseUrl}/tables`, {
-        headers: { Authorization: `Bearer ${token}` },
+        // **THAY ĐỔI:** Bỏ header Authorization, thêm credentials
+        credentials: "include",
       });
 
-      // Nếu token hết hạn hoặc không hợp lệ, server sẽ trả về 401 hoặc 403
+      // BẢO VỆ TRANG BẰNG CÁCH XỬ LÝ LỖI PHẢN HỒI
       if (response.status === 401 || response.status === 403) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        logout();
+        alert(
+          "Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại."
+        );
+        logout(); // Chuyển hướng người dùng
         return;
       }
       if (!response.ok) throw new Error("Không thể tải danh sách bàn.");
@@ -119,11 +126,14 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadProducts() {
     try {
       const response = await fetch(`${apiBaseUrl}/products`, {
-        headers: { Authorization: `Bearer ${token}` },
+        // **THAY ĐỔI:** Bỏ header Authorization, thêm credentials
+        credentials: "include",
       });
 
       if (response.status === 401 || response.status === 403) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        // Đã được xử lý ở loadTables, nhưng thêm ở đây để đảm bảo
+        // Nếu loadTables chưa chạy (hoặc có lỗi khác)
+        console.warn("Lỗi 401/403 khi tải sản phẩm.");
         logout();
         return;
       }
@@ -247,10 +257,20 @@ document.addEventListener("DOMContentLoaded", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          // **THAY ĐỔI:** Bỏ header Authorization
+          // Authorization: `Bearer ${token}`,
         },
+        // **THAY ĐỔI:** Thêm credentials để gửi cookie
+        credentials: "include",
         body: JSON.stringify(orderData),
       });
+
+      // Xử lý lỗi đăng nhập/hết hạn
+      if (response.status === 401 || response.status === 403) {
+        console.warn("Lỗi 401/403 khi gửi đơn hàng.");
+        logout();
+        return;
+      }
 
       const result = await response.json();
       if (!response.ok) {
@@ -258,7 +278,24 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       alert(result.message || "Cập nhật đơn hàng thành công!");
+      // Sau khi gửi đơn hàng, cập nhật trạng thái bàn thành "Có khách"
+      if (currentTable && currentTable.id) {
+        try {
+          await fetch(`${apiBaseUrl}/tables/${currentTable.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ status: "Có khách" }),
+          });
+        } catch (e) {
+          console.error("Lỗi cập nhật trạng thái bàn:", e);
+        }
+      }
       resetOrder(); // Xóa giỏ hàng sau khi gửi thành công
+      // Reload lại danh sách bàn để cập nhật màu
+      loadTables();
     } catch (error) {
       console.error("Lỗi gửi đơn hàng:", error);
       alert(error.message);
@@ -276,8 +313,23 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Hàm xử lý đăng xuất
-  function logout() {
-    localStorage.clear(); // Xóa tất cả thông tin đã lưu
+  async function logout() {
+    // 1. Gửi yêu cầu đến server để xóa HttpOnly Cookie (Server phải thiết lập endpoint /api/logout)
+    try {
+      await fetch(`${apiBaseUrl}/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Lỗi khi gọi API logout:", error);
+      // Server có thể đã down hoặc gặp lỗi, vẫn tiếp tục xóa local storage và chuyển hướng
+    }
+
+    // 2. Xóa các thông tin không nhạy cảm đã lưu
+    localStorage.removeItem("currentUsername");
+    localStorage.removeItem("userRole");
+
+    // 3. Chuyển hướng
     window.location.href = "/login.html";
   }
 

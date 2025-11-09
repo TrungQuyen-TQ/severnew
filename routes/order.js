@@ -105,28 +105,28 @@ router.post("/create_payment_url", function (req, res, next) {
     req.socket.remoteAddress ||
     req.connection.socket.remoteAddress;
 
-  let orderId = moment(date).format("DDHHmmss");
-  let amount = req.body.amount;
-  let bankCode = req.body.bankCode;
-
-  let locale = req.body.language || "vn";
-  let currCode = "VND";
-  let vnp_Params = {};
-  vnp_Params["vnp_Version"] = "2.1.0";
-  vnp_Params["vnp_Command"] = "pay";
-  vnp_Params["vnp_TmnCode"] = tmnCode; // Dùng hằng số từ config
-  vnp_Params["vnp_Locale"] = locale;
-  vnp_Params["vnp_CurrCode"] = currCode;
-  vnp_Params["vnp_TxnRef"] = orderId;
-  vnp_Params["vnp_OrderInfo"] = "Thanh toan cho ma GD:" + orderId;
-  vnp_Params["vnp_OrderType"] = "other";
-  vnp_Params["vnp_Amount"] = amount * 100;
-  vnp_Params["vnp_ReturnUrl"] = returnUrl; // Dùng hằng số từ config
-  vnp_Params["vnp_IpAddr"] = ipAddr;
-  vnp_Params["vnp_CreateDate"] = createDate;
-  if (bankCode) {
-    vnp_Params["vnp_BankCode"] = bankCode;
-  }
+    let orderId = moment(date).format('DDHHmmss');
+    let amount = req.body.amount;
+    let bankCode = req.body.bankCode;
+    
+    let locale = req.body.language || 'vn';
+    let currCode = 'VND';
+    let vnp_Params = {};
+    vnp_Params['vnp_Version'] = '2.1.0';
+    vnp_Params['vnp_Command'] = 'pay';
+    vnp_Params['vnp_TmnCode'] = tmnCode; // Dùng hằng số từ config
+    vnp_Params['vnp_Locale'] = locale;
+    vnp_Params['vnp_CurrCode'] = currCode;
+    vnp_Params['vnp_TxnRef'] = orderId;
+    vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + orderId;
+    vnp_Params['vnp_OrderType'] = 'other';
+    vnp_Params['vnp_Amount'] = amount * 100;
+    vnp_Params['vnp_ReturnUrl'] = returnUrl; // Dùng hằng số từ config
+    vnp_Params['vnp_IpAddr'] = ipAddr;
+    vnp_Params['vnp_CreateDate'] = createDate;
+    // if(bankCode) {
+    //     vnp_Params['vnp_BankCode'] = bankCode;
+    // }
 
   vnp_Params = sortObject(vnp_Params);
 
@@ -264,12 +264,10 @@ router.get("/vnpay_ipn", async function (req, res, next) {
     // 4. Kiểm tra trạng thái hiện tại (chỉ xử lý nếu đang PENDING)
     if (order.status !== "PENDING") {
       await connection.commit();
-      return res
-        .status(200)
-        .json({
-          RspCode: "02",
-          Message: "This order has been updated to the payment status",
-        });
+      return res.status(200).json({
+        RspCode: "02",
+        Message: "This order has been updated to the payment status",
+      });
     }
 
     // 5. Xử lý kết quả VNPAY
