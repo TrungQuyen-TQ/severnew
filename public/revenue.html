@@ -22,6 +22,11 @@
           <button id="loadBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold">
             Tải dữ liệu
           </button>
+          
+          <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold">
+            Đăng xuất
+          </button>
+          
         </div>
       </header>
 
@@ -95,7 +100,6 @@
   </div>
 
   <script>
-    // Hàm chính để tải và hiển thị dữ liệu doanh thu
     async function loadRevenue() {
       const [year, month] = document.getElementById("monthPicker").value.split("-");
 
@@ -174,7 +178,26 @@
       loadTopProducts(); // Tải và hiển thị top sản phẩm bán chạy
       loadCategoryRevenue(); // Tải và hiển thị doanh thu theo danh mục
     }
+    async function logout() {
+        try {
+            // 1. Gọi API server để xóa HttpOnly Cookie
+            // (Sử dụng đường dẫn tương đối giống như các lệnh fetch khác trong file này)
+            await fetch('/api/logout', { 
+                method: 'POST', 
+                credentials: 'include' // Quan trọng để gửi cookie
+            });
+        } catch (error) {
+            console.error("Lỗi khi gọi API logout:", error);
+            // Vẫn tiếp tục dù server có lỗi
+        }
+        
+        // 2. Xóa thông tin đã lưu trên client
+        localStorage.removeItem("currentUsername"); 
+        localStorage.removeItem("userRole"); 
 
+        // 3. Chuyển hướng về trang đăng nhập
+        window.location.href = "/login.html";
+    }
     // Hàm để vẽ các biểu đồ chính (Line và Bar)
     function renderCharts(rows) {
       const labels = rows.map(r => r.date);
@@ -470,6 +493,8 @@
 
     // Xử lý khi nhấn nút "Tải dữ liệu"
     document.getElementById("loadBtn").addEventListener("click", loadRevenue);
+
+    document.getElementById("logoutBtn").addEventListener("click", logout); 
 
     // Xử lý khi trang được tải lần đầu
     window.addEventListener("load", () => {
