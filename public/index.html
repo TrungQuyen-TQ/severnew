@@ -3,63 +3,209 @@
 
 <head>
     <meta charset="UTF-8">
-    <!-- Thẻ này CỰC KỲ QUAN TRỌNG cho responsive design -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Đặt Món</title>
+    <title>Hệ Thống Quản Lý Nhà Hàng</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* === TAB BUTTONS === */
+        .tab-buttons {
+            display: flex;
+            gap: 8px;
+            margin: 20px 0;
+        }
+
+        .tab-btn {
+            background-color: #e0e0e0;
+            border: none;
+            padding: 8px 14px;
+            font-weight: 600;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .tab-btn:hover {
+            background-color: #bdbdbd;
+        }
+
+        .tab-btn.active {
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        /* === TAB CONTENT === */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* === LAYOUT === */
+        .order-layout {
+            display: flex;
+            gap: 20px;
+        }
+
+        .menu-panel,
+        .cart-panel {
+            flex: 1;
+            background: #fafafa;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .change-table-form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .change-table-form select,
+        .change-table-form button {
+            padding: 6px 10px;
+            font-size: 15px;
+        }
+    </style>
 </head>
 
 <body>
     <div class="container">
-        <!-- Thêm đoạn này vào bên trong .container -->
         <div class="header">
-            <h1>Hệ Thống Đặt Món Ăn</h1>
+            <h1>Hệ Thống Quản Lý Nhà Hàng</h1>
             <div>
                 <span id="welcome-message"></span>
                 <button id="logout-btn">Đăng Xuất</button>
             </div>
         </div>
-        <!-- Phần còn lại của trang -->
 
-        <!-- Màn hình chọn bàn -->
-        <div id="table-selection">
-            <h1>Vui Lòng Chọn Bàn</h1>
-            <div id="table-list" class="grid-container">
-                <!-- JS sẽ render danh sách bàn vào đây -->
+        <!-- === CÁC NÚT TAB === -->
+        <div class="tab-buttons">
+            <button class="tab-btn" data-target="tab-datban">🪑 Đặt bàn</button>
+            <button class="tab-btn" data-target="tab-doiban">🔄 Đổi bàn</button>
+            <button class="tab-btn" data-target="tab-monhoanthanh">✅ Món đã hoàn thành</button>
+        </div>
+
+        <!-- === TAB 1: ĐẶT BÀN === -->
+        <div id="tab-datban" class="tab-content">
+            <h2>Đặt Bàn Cho Khách</h2>
+
+            <!-- Màn hình chọn bàn -->
+            <div id="table-selection">
+                <h3>Vui Lòng Chọn Bàn</h3>
+                <div id="table-list" class="grid-container"></div>
+            </div>
+
+            <!-- Màn hình đặt món -->
+            <div id="order-section" class="hidden">
+                <h3 id="current-table-title"></h3>
+                <div class="order-layout">
+                    <div class="menu-panel">
+                        <h4>Thực Đơn</h4>
+                        <div id="product-list" class="grid-container"></div>
+                    </div>
+
+                    <div class="cart-panel">
+                        <h4>Món Đã Chọn</h4>
+                        <div id="current-order">
+                            <ul id="order-items-list">
+                                <li class="empty-cart">Giỏ hàng đang trống...</li>
+                            </ul>
+                            <p class="total"><strong>Tổng cộng: <span id="total-price">0</span> VND</strong></p>
+                        </div>
+                        <div class="actions">
+                            <button id="update-order-btn">Cập Nhật & Gửi Bếp</button>
+                            <button id="cancel-order-btn">Hủy Món Vừa Chọn</button>
+                            <button id="back-to-tables-btn">Quay Lại Chọn Bàn</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Màn hình đặt món -->
-        <div id="order-section" class="hidden">
-            <h1 id="current-table-title"></h1>
-            <div class="order-layout">
-                <!-- Phần thực đơn -->
-                <div class="menu-panel">
-                    <h2>Thực Đơn</h2>
-                    <div id="product-list" class="grid-container">
-                        <!-- JS sẽ render thực đơn vào đây -->
+        <!-- === TAB 2: ĐỔI BÀN === -->
+        <div id="tab-doiban" class="tab-content">
+            <h2>Chuyển Bàn Cho Khách</h2>
+
+            <div class="change-table-form">
+                <label>Bàn hiện tại:</label>
+                <select id="old-table-select"></select>
+
+                <label>Bàn mới:</label>
+                <select id="new-table-select"></select>
+
+                <button id="change-table-btn" class="tab-btn" style="background:#f39c12;color:white;">🔄 Đổi
+                    Bàn</button>
+            </div>
+
+            <div id="change-table-message" style="margin-top:10px; font-weight:bold;"></div>
+        </div>
+
+
+        <!-- === TAB 3: MÓN HOÀN THÀNH === -->
+        <div id="tab-monhoanthanh" class="tab-content">
+            <div class="cooked-layout">
+                <div class="bills-list-section">
+                    <div class="bills-header">
+                        <h3>Danh sách Bill đang chờ</h3>
+                        <button id="refresh-bills-btn">🔄 Làm mới</button>
                     </div>
+                    <div id="bills-list" class="bills-list"></div>
                 </div>
-                <!-- Phần giỏ hàng và thanh toán -->
-                <div class="cart-panel">
-                    <h2>Món Đã Chọn</h2>
-                    <div id="current-order">
-                        <ul id="order-items-list">
-                            <li class="empty-cart">Giỏ hàng đang trống...</li>
-                        </ul>
-                        <p class="total"><strong>Tổng cộng: <span id="total-price">0</span> VND</strong></p>
-                    </div>
-                    <div class="actions">
-                        <button id="update-order-btn">Cập Nhật & Gửi Bếp</button>
-                        <button id="cancel-order-btn">Hủy Món Vừa Chọn</button>
-                        <button id="back-to-tables-btn">Quay Lại Chọn Bàn</button>
-                    </div>
-                </div>
+
+                <div id="bill-detail" class="bill-detail"></div>
             </div>
         </div>
+
     </div>
 
     <script src="script.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const tabButtons = document.querySelectorAll(".tab-btn");
+            const tabContents = document.querySelectorAll(".tab-content");
+
+            // 🧠 Khai báo biến activeTab bên trong phạm vi an toàn
+            const savedTab = localStorage.getItem("activeTab");
+            let activeTab = savedTab || "tab-datban";
+
+            // ✅ Thêm kiểm tra tránh null
+            const activeButton = document.querySelector(`[data-target="${activeTab}"]`);
+            const activeTabDiv = document.getElementById(activeTab);
+            if (activeButton) activeButton.classList.add("active");
+            if (activeTabDiv) activeTabDiv.classList.add("active");
+
+            // Chuyển tab
+            tabButtons.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    tabButtons.forEach(b => b.classList.remove("active"));
+                    tabContents.forEach(c => c.classList.remove("active"));
+                    btn.classList.add("active");
+                    const target = btn.getAttribute("data-target");
+                    const tabContent = document.getElementById(target);
+                    if (tabContent) tabContent.classList.add("active");
+                    localStorage.setItem("activeTab", target);
+                });
+            });
+        });
+    </script>
+
 </body>
 
 </html>
