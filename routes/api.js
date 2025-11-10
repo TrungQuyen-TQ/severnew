@@ -200,7 +200,7 @@ router.put(
     const orderId = req.params.orderId;
     const sql = `
         UPDATE orders
-        SET status = 'SERVED'
+        SET status = 'COOKED'
         WHERE id = ? AND status = 'PENDING';
     `; // Chỉ update nếu đang ở trạng thái PENDING
 
