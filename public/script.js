@@ -196,24 +196,47 @@ document.addEventListener("DOMContentLoaded", () => {
       const item = newOrderItems[index];
       const li = document.createElement("li");
       li.innerHTML = `
-      <div class="cart-item-info">
-                    <span>${item.name} x ${item.quantity}</span>
-                    <span>${(
-                      item.price * item.quantity
-                    ).toLocaleString()} VND</span>
-                </div>
-                <div class="cart-item-note">
-                    <input type="text" class="note-input" data-index="${index}" value="${
+  <div class="cart-item-top">
+    <strong>${item.name}</strong>
+  </div>
+  <div class="cart-item-bottom">
+    <div class="quantity-controls">
+      <button class="qty-btn minus" data-index="${index}">−</button>
+      <span class="qty-display">${item.quantity}</span>
+      <button class="qty-btn plus" data-index="${index}">+</button>
+    </div>
+    <span class="price-text">${(
+      item.price * item.quantity
+    ).toLocaleString()} VND</span>
+    <input type="text" class="note-input" data-index="${index}" value="${
         item.note || ""
       }" placeholder="Thêm ghi chú...">
-                </div>
-            `;
+  </div>
+`;
       orderItemsList.appendChild(li);
       totalPrice += item.price * item.quantity;
     }
     // Hiển thị tổng tiền
     totalPriceSpan.textContent = totalPrice.toLocaleString();
   }
+
+  // 📦 Lắng nghe sự kiện click trên danh sách món
+  orderItemsList.addEventListener("click", (e) => {
+    if (e.target.classList.contains("qty-btn")) {
+      const index = parseInt(e.target.dataset.index, 10);
+      if (isNaN(index)) return;
+
+      if (e.target.classList.contains("plus")) {
+        newOrderItems[index].quantity++;
+      } else if (e.target.classList.contains("minus")) {
+        newOrderItems[index].quantity--;
+        if (newOrderItems[index].quantity <= 0) {
+          newOrderItems.splice(index, 1); // Xóa món khi quantity = 0
+        }
+      }
+      renderNewOrderItems();
+    }
+  });
 
   // Hàm xóa các món vừa chọn trong giỏ hàng (chưa gửi đi)
   function resetOrder() {
@@ -274,7 +297,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.error || "Gửi đơn hàng thất bại.");
+        // ✅ Hiển thị cảnh báo lỗi rõ ràng
+        alert(result.message || result.error || "Không thể gửi đơn hàng.");
+
+        // 🔁 Tải lại danh sách sản phẩm để hiển thị món hết hàng
+        await loadProducts();
+
+        // 🧹 Không reset giỏ hàng (để nhân viên có thể chỉnh lại)
+        updateOrderBtn.disabled = false;
+        updateOrderBtn.textContent = "Cập Nhật & Gửi Bếp";
+        return;
       }
 
       alert(result.message || "Cập nhật đơn hàng thành công!");
@@ -310,6 +342,238 @@ document.addEventListener("DOMContentLoaded", () => {
     orderSectionDiv.classList.add("hidden");
     tableSelectionDiv.classList.remove("hidden");
     currentTable = null;
+  }
+
+  // =================== ĐỔI BÀN ===================
+  async function loadTablesForChange() {
+    console.log("Loading tables for change...");
+    const response = await fetch("http://localhost:3000/api/tables", {
+      credentials: "include",
+    });
+    const tables = await response.json();
+
+    const oldSelect = document.getElementById("old-table-select");
+    const newSelect = document.getElementById("new-table-select");
+
+    oldSelect.innerHTML = "";
+    newSelect.innerHTML = "";
+
+    tables.forEach((table) => {
+      const opt1 = document.createElement("option");
+      opt1.value = table.id;
+      opt1.textContent = `${table.name} (${table.status})`;
+      oldSelect.appendChild(opt1);
+
+      const opt2 = document.createElement("option");
+      opt2.value = table.id;
+      opt2.textContent = `${table.name} (${table.status})`;
+      newSelect.appendChild(opt2);
+    });
+  }
+
+  async function changeTable() {
+    const old_table_id = document.getElementById("old-table-select").value;
+    const new_table_id = document.getElementById("new-table-select").value;
+    const msg = document.getElementById("change-table-message");
+
+    if (old_table_id === new_table_id) {
+      msg.textContent = "⚠️ Không thể đổi cùng một bàn.";
+      msg.style.color = "red";
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:3000/api/change-table", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ old_table_id, new_table_id }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi đổi bàn.");
+
+      // ✅ Hiện thông báo thành công
+      msg.textContent = data.message;
+      msg.style.color = "green";
+
+      // ✅ Giữ tab "Đổi bàn" luôn hiển thị
+      const tabBtn = document.querySelector('[data-target="tab-doiban"]');
+      const tabContent = document.getElementById("tab-doiban");
+
+      if (tabBtn && tabContent) {
+        tabBtn.classList.add("active");
+        tabContent.classList.add("active");
+      }
+
+      // 🔁 Tải lại danh sách bàn mà KHÔNG ẩn tab
+      await loadTablesForChange();
+    } catch (error) {
+      msg.textContent = "❌ " + error.message;
+      msg.style.color = "red";
+    }
+    loadTables();
+  }
+
+  // =================== MÓN ĐÃ HOÀN THÀNH ===================
+
+  // 🟩 1. Load danh sách bill đã COOKED
+  async function loadCookedBills() {
+    console.log("📦 Đang tải danh sách bill COOKED...");
+
+    const listDiv = document.getElementById("bills-list");
+    const detailDiv = document.getElementById("bill-detail");
+    listDiv.innerHTML = "<p>⏳ Đang tải dữ liệu...</p>";
+    detailDiv.innerHTML = "";
+
+    try {
+      const res = await fetch("http://localhost:3000/api/cooked-orders", {
+        credentials: "include",
+      });
+      const bills = await res.json();
+
+      if (!Array.isArray(bills) || bills.length === 0) {
+        listDiv.innerHTML = "<p>✅ Không có bill nào đang chờ phục vụ.</p>";
+        return;
+      }
+
+      listDiv.innerHTML = "";
+
+      bills.forEach((bill) => {
+        const billDiv = document.createElement("div");
+        billDiv.classList.add("bill-item");
+        billDiv.dataset.id = bill.Order_ID;
+        billDiv.innerHTML = `
+        <strong>Bill ${bill.Order_ID}</strong> (Bàn: ${bill.Ten_Ban})<br>
+        <small>Lúc: ${new Date(
+          bill.Thoi_Gian_Order
+        ).toLocaleTimeString()}</small>
+      `;
+
+        billDiv.addEventListener("click", () => {
+          document
+            .querySelectorAll(".bill-item")
+            .forEach((b) => b.classList.remove("active"));
+          billDiv.classList.add("active");
+          showBillDetail(bill.Order_ID, billDiv);
+        });
+
+        listDiv.appendChild(billDiv);
+      });
+    } catch (error) {
+      listDiv.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+    }
+  }
+
+  // 🟩 2. Hiển thị chi tiết các món trong 1 bill
+  async function showBillDetail(orderId, element) {
+    const detailDiv = document.getElementById("bill-detail");
+    detailDiv.innerHTML = "<p>⏳ Đang tải chi tiết bill...</p>";
+
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/cooked-orders/${orderId}`,
+        { credentials: "include" }
+      );
+      const items = await res.json();
+
+      if (!items || items.length === 0) {
+        detailDiv.innerHTML = `<p>✅ Bill #${orderId} đã phục vụ xong.</p>`;
+        await loadCookedBills();
+        return;
+      }
+
+      let html = `
+      <div class="bill-detail-header">
+        <h2>Chi Tiết Bill #${orderId}</h2>
+      </div>
+      <table class="bill-table">
+        <thead>
+          <tr>
+            <th>Phục vụ</th>
+            <th>Hình ảnh</th>
+            <th>Tên món & Ghi chú</th>
+            <th>Số lượng</th>
+            <th>Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+      items.forEach((item) => {
+        const isServed = item.TrangThai === "SERVED";
+        html += `
+        <tr class="${isServed ? "served-row" : ""}">
+          <td>
+            <input type="checkbox"
+              ${isServed ? "checked disabled" : ""}
+              data-id="${item.order_detail_id}">
+          </td>
+          <td><img src="${item.image}" alt="${item.TenMon}" width="60"></td>
+          <td><strong>${item.TenMon}</strong><br>${item.GhiChu || ""}</td>
+          <td style="color:red;font-weight:600;">${item.SoLuong}</td>
+          <td>${isServed ? "✅ Đã phục vụ" : "⏱ Chờ phục vụ"}</td>
+        </tr>
+      `;
+      });
+
+      html += `</tbody></table>`;
+      detailDiv.innerHTML = html;
+
+      detailDiv.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.addEventListener("change", async (e) => {
+          const detailId = e.target.dataset.id;
+          await serveItem(detailId, orderId);
+        });
+      });
+    } catch (error) {
+      detailDiv.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+    }
+  }
+
+  // 🟩 3. Cập nhật trạng thái món (COOKED → SERVED)
+  async function serveItem(detailId, orderId) {
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/serve-item/${detailId}`,
+        {
+          method: "PUT",
+          credentials: "include",
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không thể phục vụ món.");
+
+      console.log(`✅ ${data.message}`);
+      await showBillDetail(
+        orderId,
+        document.querySelector(".bill-item.active")
+      );
+    } catch (err) {
+      console.error("❌", err.message);
+    }
+  }
+
+  // 🟢 Khi mở tab “Món đã hoàn thành” thì gọi hàm
+  document
+    .querySelector('[data-target="tab-monhoanthanh"]')
+    .addEventListener("click", loadCookedBills);
+
+  // 🟢 Nút làm mới danh sách bill
+  document
+    .getElementById("refresh-bills-btn")
+    .addEventListener("click", loadCookedBills);
+
+  // Tải danh sách bàn khi vào tab "Đổi bàn"
+  const changeTabBtn = document.querySelector('[data-target="tab-doiban"]');
+  if (changeTabBtn) {
+    changeTabBtn.addEventListener("click", loadTablesForChange);
+  }
+
+  const changeBtn = document.getElementById("change-table-btn");
+  if (changeBtn) {
+    changeBtn.addEventListener("click", changeTable);
   }
 
   // Hàm xử lý đăng xuất

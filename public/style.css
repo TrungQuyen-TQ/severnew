@@ -465,3 +465,222 @@ tr:nth-child(even) {
   font-size: 1.5rem;
   cursor: pointer;
 }
+
+/* Mỗi món trong danh sách */
+#order-items-list li {
+  list-style: none;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  display: block;
+}
+
+/* Dòng tên món */
+.cart-item-top {
+  font-size: 16px;
+  font-weight: 400;
+  margin-bottom: 6px;
+}
+
+/* Dòng chứa số lượng, giá và ghi chú */
+.cart-item-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap; /* Cho responsive gọn hơn */
+}
+
+/* Cụm tăng giảm */
+.quantity-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qty-btn {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.qty-btn:hover {
+  background-color: #2980b9;
+}
+
+.qty-display {
+  font-weight: bold;
+  min-width: 20px;
+  text-align: center;
+}
+
+.price-text {
+  font-weight: 500;
+  color: #2c3e50;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.note-input {
+  flex: 1;
+  min-width: 120px;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* ✅ Bố cục chính cho tab Món đã hoàn thành */
+.cooked-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+/* ✅ Danh sách bill bên trái */
+.bills-list {
+  flex: 0 0 30%;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+/* ✅ Chi tiết bill bên phải */
+.bill-detail {
+  flex: 1;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  min-height: 300px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+/* ✅ Từng bill nhỏ */
+.bill-item {
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.25s, box-shadow 0.25s;
+}
+
+.bill-item:hover {
+  background: #eef5ff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.bill-item.active {
+  background: #d4edda;
+  border: 1px solid #28a745;
+  box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+}
+
+/* ✅ Bảng món ăn */
+.bill-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+.bill-table th,
+.bill-table td {
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.bill-table th {
+  background-color: #f1f1f1;
+  font-weight: bold;
+}
+
+.bill-table td img {
+  border-radius: 5px;
+}
+
+.served-row {
+  opacity: 0.6;
+  background-color: #f9f9f9;
+}
+
+/* ✅ Header của chi tiết bill */
+.bill-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.bill-detail-header h2 {
+  color: #333;
+  font-size: 18px;
+  margin: 0;
+}
+
+.bill-detail-header button {
+  background-color: #007bff;
+  border: none;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+
+.bill-detail-header button:hover {
+  background-color: #0056b3;
+}
+
+.bills-header {
+  display: block;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+#refresh-bills-btn {
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.25s;
+}
+
+#refresh-bills-btn:hover {
+  background-color: #138496;
+}
+
+/* ✅ Responsive */
+@media (max-width: 900px) {
+  .cooked-layout {
+    flex-direction: column;
+  }
+  .bills-list,
+  .bill-detail {
+    width: 100%;
+    max-height: none;
+  }
+}
