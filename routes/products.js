@@ -26,7 +26,7 @@ router.post("/", authMiddleware(["MANAGER"]), upload.single("image"), async (req
   const { category_id, name, price, stock } = req.body;
   const image = req.file ? "/uploads/" + req.file.filename : null;
   await pool.execute(
-    "INSERT INTO products (category_id, name, price, stock, image) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO products (category_id, name, price, quantity, image_url) VALUES (?, ?, ?, ?, ?)",
     [category_id, name, price, stock, image]
   );
   res.json({ message: "Created" });
@@ -64,7 +64,7 @@ router.put("/:id", authMiddleware(["MANAGER"]), upload.single("image"), async (r
 
   // Kiểm tra và thêm 'stock'
   if (stock !== undefined) {
-    fields.push("stock=?");
+    fields.push("quantity=?");
     values.push(stock);
   }
 
