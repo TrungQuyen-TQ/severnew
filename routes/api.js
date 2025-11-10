@@ -279,10 +279,12 @@ router.get("/cooked-orders/:id", authenticateToken, async (req, res) => {
         p.image_url AS image,
         p.name AS TenMon,
         od.quantity AS SoLuong,
-        od.note AS GhiChu
+        od.note AS GhiChu,
+        od.status AS TrangThai
       FROM order_details od
       JOIN products p ON od.product_id = p.id
-      WHERE od.order_id = ?;
+      WHERE od.order_id = ?
+        AND od.status != 'SERVED';
     `;
     const conn = await mysql.createConnection(dbConfig);
     const [details] = await conn.execute(sql, [id]);
