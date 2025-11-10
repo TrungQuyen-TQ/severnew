@@ -254,9 +254,17 @@ document.addEventListener("DOMContentLoaded", () => {
   backToBillsBtn.addEventListener("click", goBackToBills);
 
   // HÀM LOGOUT
+
+
+  // --- KHỞI CHẠY ---
+  fetchAndGroupOrders();
+  // Tự động làm mới danh sách sau mỗi 30 giây
+  setInterval(fetchAndGroupOrders, 30000);
+});
+
   async function logout() {
     const apiBaseUrl = "http://localhost:3000/api"; 
-
+    console.log("DEBUG: Đang gọi hàm logout từ chef.js");
     try {
       await fetch(`${apiBaseUrl}/logout`, {
         method: "POST",
@@ -269,9 +277,3 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.clear();
     window.location.href = "/login.html";
   }
-
-  // --- KHỞI CHẠY ---
-  fetchAndGroupOrders();
-  // Tự động làm mới danh sách sau mỗi 30 giây
-  setInterval(fetchAndGroupOrders, 30000);
-});
