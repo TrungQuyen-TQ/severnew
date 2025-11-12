@@ -1,14 +1,27 @@
-// File: chef.js (Đã sửa đổi cho luồng làm việc liên tục và sửa lỗi)
+// File: chef.js (ĐÃ SỬA LỖI LOGOUT VÀ TỐI ƯU LOGIC NÚT)
+
+// ✅ HÀM LOGOUT PHẢI NẰM Ở PHẠM VI TOÀN CỤC
+async function logout() {
+  const apiBaseUrl = "http://localhost:3000/api"; 
+  console.log("DEBUG: Đang gọi hàm logout");
+  try {
+    await fetch(`${apiBaseUrl}/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (error) {
+    console.error("Lỗi khi gọi API logout:", error);
+  }
+
+  localStorage.clear();
+  window.location.href = "/login.html";
+}
+
 
 document.addEventListener("DOMContentLoaded", () => {
-  // LƯU Ý: Biến token KHÔNG CẦN thiết nếu dùng HttpOnly Cookie
-  const userRole = localStorage.getItem("userRole"); // role được lưu tạm
-  const username = localStorage.getItem("currentUsername"); // Đã thống nhất tên key
-
-  // Khai báo API
+  const username = localStorage.getItem("currentUsername"); 
   const apiBaseUrl = "http://localhost:3000/api";
 
-  // Khai báo Element
   const pendingBillListDiv = document.getElementById("pending-bill-list");
   const billDetailsPanel = document.getElementById("bill-details-panel");
   const detailsTitle = document.getElementById("details-title");
@@ -16,41 +29,35 @@ document.addEventListener("DOMContentLoaded", () => {
   const completeOrderBtn = document.getElementById("complete-order-btn");
   const backToBillsBtn = document.getElementById("back-to-bills-btn");
 
-  // Biến lưu trữ dữ liệu
-  let allPendingBills = {}; // Lưu trữ Bills đã nhóm
+  let allPendingBills = {}; 
 
   document.getElementById(
     "welcome-message"
   ).textContent = `Chào Đầu bếp, ${username}!`;
 
-  // --- HÀM XỬ LÝ LỖI AUTHENTICATION (MỚI THÊM) ---
-  /**
-   * Kiểm tra response. Nếu là lỗi Auth (ví dụ 401/403), tự động logout và trả về true.
-   * @param {Response} response - Đối tượng Response từ fetch.
-   * @returns {boolean} - True nếu lỗi Auth được xử lý, False nếu không phải lỗi Auth.
-   */
+  // --- HÀM XỬ LÝ LỖI AUTHENTICATION ---
   function handleAuthError(response) {
     if (response.status === 401 || response.status === 403) {
       console.warn("Lỗi xác thực (401/403). Đang chuyển hướng về trang đăng nhập.");
-      logout(); // Gọi hàm logout đã định nghĩa ở cuối file
-      return true; // Báo hiệu đã xử lý lỗi
+      // Gọi hàm logout toàn cục
+      logout(); 
+      return true;
     }
-    return false; // Không phải lỗi Auth
+    return false;
   }
+
   // --- HÀM XỬ LÝ CHÍNH ---
 
-  // Hàm tải và nhóm đơn hàng thành các Bill
-  // Tải danh sách các món ăn đang chờ (PENDING MEALS)
   async function fetchAndGroupOrders() {
     pendingBillListDiv.innerHTML =
       '<div class="loading-state">Đang tải đơn hàng...</div>';
     try {
       const response = await fetch(`${apiBaseUrl}/chef/pending-meals`, {
         method: "GET",
-        credentials: "include", // Trình duyệt tự động gửi HttpOnly Cookie
+        credentials: "include",
       });
 
-      if (handleAuthError(response)) return; // ✅ SỬ DỤNG HÀM MỚI
+      if (handleAuthError(response)) return;
 
       if (!response.ok)
         throw new Error("Không thể tải danh sách món ăn đang chờ.");
@@ -63,7 +70,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Nhóm các món ăn theo Order_ID và hiển thị ra danh sách Bill
   function groupMealsByOrder(meals) {
     allPendingBills = meals.reduce((acc, meal) => {
       if (!acc[meal.Order_ID]) {
@@ -74,21 +80,24 @@ document.addEventListener("DOMContentLoaded", () => {
           items: [],
         };
       }
-      acc[meal.Order_ID].items.push(meal);
+      acc[meal.Order_ID].items.push(meal); 
       return acc;
     }, {});
 
     renderPendingBills();
   }
 
-  // Hàm hiển thị danh sách Bills
   function renderPendingBills() {
     pendingBillListDiv.innerHTML = "";
     const bills = Object.values(allPendingBills);
 
     if (bills.length === 0) {
         pendingBillListDiv.innerHTML = '<div class="empty-state">Không có Bill đang chờ nào.</div>';
+        billDetailsPanel.classList.add("hidden"); 
+        return;
     }
+
+    bills.sort((a, b) => a.time - b.time);
 
     bills.forEach((bill, index) => {
       const billCard = document.createElement("div");
@@ -103,43 +112,45 @@ document.addEventListener("DOMContentLoaded", () => {
       pendingBillListDiv.appendChild(billCard);
     });
 
-    // Tự động tải Bill tiếp theo nếu có
     loadNextBill();
   }
 
-  // ⭐ HÀM MỚI: Tải Bill đầu tiên trong danh sách và làm sạch giao diện
   function loadNextBill() {
     const bills = Object.values(allPendingBills);
+    bills.sort((a, b) => a.time - b.time); 
 
     if (bills.length > 0) {
-      // Hiển thị Bill đầu tiên (Bill được order sớm nhất do API đã ORDER BY created_at)
-      selectBill(bills[0].orderId);
+      const nextOrderId = bills[0].orderId;
+      selectBill(nextOrderId);
       billDetailsPanel.classList.remove("hidden");
-
-      // Highlight Bill đang được chọn
+      
       document
         .querySelectorAll(".bill-card")
         .forEach((card) => (card.style.backgroundColor = "white"));
       const currentCard = document.querySelector(
-        `.bill-card[data-order-id="${bills[0].orderId}"]`
+        `.bill-card[data-order-id="${nextOrderId}"]`
       );
       if (currentCard) {
-        currentCard.style.backgroundColor = "#f0fff0"; // Highlight Bill đang làm
+        currentCard.style.backgroundColor = "#f0fff0";
       }
     } else {
-      // Không còn Bill nào, làm sạch giao diện chi tiết
       billDetailsPanel.classList.add("hidden");
       mealListDetails.innerHTML = "";
       detailsTitle.textContent = "Chi Tiết Bill";
     }
   }
 
-  // Hàm hiển thị chi tiết Bill khi click
+  
   function selectBill(orderId) {
     const bill = allPendingBills[orderId];
     if (!bill) return;
 
-    // Highlight Bill đang được chọn
+    // Sắp xếp: PENDING -> COOKED
+    bill.items.sort((a, b) => {
+        const orderMap = { 'PENDING': 0, 'COOKED': 1, 'SERVED': 2 };
+        return (orderMap[a.Trang_Thai_Mon] || 0) - (orderMap[b.Trang_Thai_Mon] || 0); 
+    });
+
     document
       .querySelectorAll(".bill-card")
       .forEach((card) => (card.style.backgroundColor = "white"));
@@ -147,69 +158,130 @@ document.addEventListener("DOMContentLoaded", () => {
       `.bill-card[data-order-id="${orderId}"]`
     );
     if (currentCard) {
-      currentCard.style.backgroundColor = "#f0fff0"; // Highlight Bill đang làm
+      currentCard.style.backgroundColor = "#f0fff0";
     }
 
-    // Cập nhật tiêu đề và Order ID
     detailsTitle.textContent = `Chi Tiết Bill #${bill.orderId} (${bill.tableName})`;
     completeOrderBtn.dataset.orderId = bill.orderId;
-
-    // === BẮT ĐẦU PHẦN THAY ĐỔI: THÊM HEADER CỘT ===
-
+    
     // 1. Định nghĩa hàng tiêu đề
     const headerRow = `
-            <div class="meal-detail-header">
-                <div style="font-weight: bold; margin-right: 10px; width: 30px;">STT</div>
-                <div style="font-weight: bold; width: 60px;">Hình ảnh</div>
-                <div class="item-info" style="font-weight: bold;">Tên món ăn & Ghi chú</div>
-                <div class="item-quantity" style="font-weight: bold; color: var(--dark-text);">Số lượng</div>
-            </div>
-        `;
+        <div class="meal-detail-header">
+            <div style="font-weight: bold; margin-right: 10px; width: 30px;">STT</div>
+            <div style="font-weight: bold; width: 30px;">Chọn</div>
+            <div style="font-weight: bold; width: 60px;">Hình ảnh</div>
+            <div class="item-info" style="font-weight: bold;">Tên món ăn & Ghi chú</div>
+            <div class="item-quantity" style="font-weight: bold; color: var(--dark-text);">Số lượng</div>
+            <div style="font-weight: bold; width: 80px; text-align: center;">Hành động</div>
+        </div>
+    `;
 
-    // 2. Render danh sách món ăn (mapping từ data)
+    // 2. Render danh sách món ăn
     const mealItemsHtml = bill.items
       .map(
-        (meal, index) => `
-            <div class="meal-detail-item">
-                <div style="font-weight: bold; margin-right: 10px; width: 30px;">${
-                  index + 1
-                }.</div>
-                <img src="${
-                  meal.image_url || "/images/default-food.png"
-                }" alt="${meal.Ten_Mon_An}">
-                <div class="item-info">
-                    <strong>${meal.Ten_Mon_An}</strong>
-                    <span style="color: #888;">${
-                      meal.Ghi_Chu ? `(Ghi chú: ${meal.Ghi_Chu})` : ""
-                    }</span>
+        (meal, index) => {
+            const detailId = meal.Chi_Tiet_ID; 
+            const status = meal.Trang_Thai_Mon; 
+            
+            const isPending = status === 'PENDING';
+            const isCooked = status === 'COOKED';
+            
+            let checkboxHtml = '';
+            if (isPending) {
+                // Checkbox cho món PENDING
+                checkboxHtml = `<input type="checkbox" class="cook-checkbox" data-detail-id="${detailId}">`;
+            } else if (isCooked) {
+                // Dấu tích cho món đã nấu xong
+                checkboxHtml = `<span style="color: #27ae60;">✔</span>`; 
+            }
+            
+            let actionHtml = '';
+            if (isPending) {
+                actionHtml = `<span style="color: #e67e22; font-weight: bold;">Đang Chờ</span>`;
+            } else if (isCooked) {
+                actionHtml = `<span style="color: #27ae60; font-weight: bold;">Đã Nấu</span>`;
+            } 
+            
+            // Món COOKED sẽ có class done-item
+            const itemClass = isCooked ? 'done-item' : '';
+            
+            return `
+                <div class="meal-detail-item ${itemClass}">
+                    <div style="font-weight: bold; margin-right: 10px; width: 30px;">${index + 1}.</div>
+                    <div style="width: 30px; text-align: center;">${checkboxHtml}</div> 
+                    <img src="${meal.image_url || "/images/default-food.png"}" alt="${meal.Ten_Mon_An}">
+                    <div class="item-info">
+                        <strong>${meal.Ten_Mon_An}</strong>
+                        <span style="color: #888;">${
+                          meal.Ghi_Chu ? `(Ghi chú: ${meal.Ghi_Chu})` : ""
+                        }</span>
+                    </div>
+                    <div class="item-quantity">${meal.So_Luong}</div>
+                    <div style="width: 80px; text-align: center;">${actionHtml}</div>
                 </div>
-                <div class="item-quantity">${meal.So_Luong}</div>
-            </div>
-        `
+            `;
+        }
       )
       .join("");
 
-    // 3. Gán cả header và items vào element
     mealListDetails.innerHTML = headerRow + mealItemsHtml;
 
-    // === KẾT THÚC PHẦN THAY ĐỔI ===
+    // ✅ LOGIC CẬP NHẬT NÚT HOÀN THÀNH
+    const updateCompleteButton = () => {
+        const checkedCount = document.querySelectorAll('#bill-details-panel .cook-checkbox:checked').length;
+        
+        // 🔹 1. Đổi chữ nút
+        completeOrderBtn.textContent = checkedCount > 0 
+            ? `Hoàn Thành ${checkedCount} Món Đã Chọn`
+            : 'Chưa có món nào được chọn';
+        
+        // 🔹 2. Kích hoạt/Vô hiệu hóa nút
+        completeOrderBtn.disabled = checkedCount === 0;
+        
+        // 🔹 3. Ẩn nút nếu Bill đã xong bếp
+        const hasPendingItems = bill.items.some(item => item.Trang_Thai_Mon === 'PENDING');
+
+        if (!hasPendingItems) {
+             completeOrderBtn.classList.add('hidden');
+             mealListDetails.innerHTML += '<div class="empty-state" style="margin-top: 20px; color: green; font-weight: bold;">✅ Bill này đã hoàn thành công đoạn Bếp!</div>';
+        } else {
+            completeOrderBtn.classList.remove('hidden');
+        }
+    };
+    
+    // Gán sự kiện cho tất cả checkbox
+    document.querySelectorAll('#bill-details-panel .cook-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateCompleteButton);
+    });
+
+    // Cập nhật trạng thái nút lần đầu
+    updateCompleteButton(); 
 
     billDetailsPanel.classList.remove("hidden");
-    // Cuộn đến đầu danh sách bill trên mobile
     if (window.innerWidth <= 768) {
       billDetailsPanel.scrollIntoView({ behavior: "smooth" });
     }
   }
 
-  // Hàm xử lý nút Hoàn thành Bill & Phục vụ
+  
+  // Hàm xử lý nút Hoàn thành (cập nhật các món đã chọn thành COOKED)
   async function completeOrder() {
     const orderId = completeOrderBtn.dataset.orderId;
-    console.log("DEBUG: Completing order ID:", orderId);
-    if (!orderId) return;
+    if (!orderId || completeOrderBtn.disabled) return;
+
+    // 1. Lấy tất cả detail_id đã được tích chọn
+    const checkedCheckboxes = document.querySelectorAll('#bill-details-panel .cook-checkbox:checked');
+    const checkedDetails = Array.from(checkedCheckboxes)
+                                .map(checkbox => checkbox.dataset.detailId);
+    
+    if (checkedDetails.length === 0) {
+        alert("Vui lòng chọn ít nhất một món để hoàn thành.");
+        return;
+    }
 
     if (
       !confirm(
-        `Xác nhận hoàn thành tất cả món ăn trong Bill #${orderId} và chuyển trạng thái thành 'Đã phục vụ'?`
+        `Xác nhận chuyển ${checkedDetails.length} món ăn đã chọn trong Bill #${orderId} thành 'Đã nấu xong' ('COOKED')?`
       )
     ) {
       return;
@@ -218,32 +290,51 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       completeOrderBtn.disabled = true;
       completeOrderBtn.textContent = "Đang xử lý...";
-
-      // Gọi API để cập nhật trạng thái
-      const response = await fetch(
-        `${apiBaseUrl}/chef/serve-order/${orderId}`,
-        {
-          method: "PUT",
-          credentials: "include", // Dùng Cookie thay vì Token Header
-        }
+      
+      // GỌI API THEO VÒNG LẶP: PUT /api/chef/cook-meal/:detail_id
+      const updatePromises = checkedDetails.map(detail_id => 
+          fetch(`${apiBaseUrl}/chef/cook-meal/${detail_id}`, {
+              method: "PUT",
+              credentials: "include", 
+          })
       );
+      
+      const results = await Promise.all(updatePromises);
+      
+      let successCount = 0;
+      let errorMessages = [];
 
-      if (handleAuthError(response)) return; // ✅ SỬ DỤNG HÀM MỚI
+      // Kiểm tra kết quả
+      for (let i = 0; i < results.length; i++) {
+          const response = results[i];
+          if (handleAuthError(response)) return;
+          
+          if (response.ok) {
+              successCount++;
+          } else {
+              const errorBody = await response.json();
+              errorMessages.push(`Món ${checkedDetails[i]}: ${errorBody.error || "Lỗi không xác định"}`);
+          }
+      }
 
-      if (!response.ok) throw new Error("Cập nhật trạng thái thất bại.");
+      if (successCount > 0) {
+          alert(`✅ Đã hoàn thành nấu ${successCount} món ăn. \n${errorMessages.join('\n')}`);
+      } else {
+          // Chỉ báo lỗi nếu không có món nào được cập nhật
+          throw new Error("Không có món nào được cập nhật thành công.");
+      }
 
-      // Tải lại và hiển thị Bill tiếp theo
+      // Tải lại: Bill sẽ được sắp xếp lại
       await fetchAndGroupOrders();
+      
     } catch (error) {
-      console.error("Lỗi khi hoàn thành Bill:", error);
+      console.error("Lỗi khi hoàn thành món ăn:", error);
       alert(error.message);
     } finally {
-      completeOrderBtn.disabled = false;
-      completeOrderBtn.textContent = "Hoàn Thành Bill & Phục Vụ";
+      // Trạng thái nút sẽ được cập nhật lại sau khi fetchAndGroupOrders xong
     }
   }
 
-  // Hàm quay lại danh sách trên mobile
   function goBackToBills() {
     billDetailsPanel.classList.add("hidden");
     pendingBillListDiv.scrollIntoView({ behavior: "smooth" });
@@ -253,27 +344,8 @@ document.addEventListener("DOMContentLoaded", () => {
   completeOrderBtn.addEventListener("click", completeOrder);
   backToBillsBtn.addEventListener("click", goBackToBills);
 
-  // HÀM LOGOUT
-
-
   // --- KHỞI CHẠY ---
   fetchAndGroupOrders();
   // Tự động làm mới danh sách sau mỗi 30 giây
   setInterval(fetchAndGroupOrders, 30000);
 });
-
-  async function logout() {
-    const apiBaseUrl = "http://localhost:3000/api"; 
-    console.log("DEBUG: Đang gọi hàm logout từ chef.js");
-    try {
-      await fetch(`${apiBaseUrl}/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (error) {
-      console.error("Lỗi khi gọi API logout:", error);
-    }
-
-    localStorage.clear();
-    window.location.href = "/login.html";
-  }
