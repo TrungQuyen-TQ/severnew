@@ -173,36 +173,41 @@
         border-radius: 5px;
     }
     
-    /* ✅ CẬP NHẬT CĂN CHỈNH CỘT */
+    /* Đảm bảo các cột trong header và item alignment */
+    /* Cột 1: STT */
     .meal-detail-header > div:nth-child(1),
     .meal-detail-item > div:nth-child(1) {
-        width: 30px; /* Cột STT */
+        width: 30px; /* STT */
     }
-    /* CỘT MỚI: CHỌN (Đã chuyển sang nth-child(2)) */
-    .meal-detail-header > div:nth-child(2), 
-    .meal-detail-item > div:nth-child(2) {
-        width: 30px; /* Cột Checkbox */
-        text-align: center;
-    }
-    .meal-detail-header > div:nth-child(3),
+    /* Cột 2: HÌNH ẢNH (60px) */
+    .meal-detail-header > div:nth-child(2),
     .meal-detail-item img {
-        width: 60px; /* Cột Hình ảnh */
+        width: 60px;
         flex-shrink: 0;
     }
+    /* Cột 3: Tên món/Info */
     .meal-detail-header .item-info,
     .meal-detail-item .item-info {
-        flex-grow: 1; /* Cột Tên & Ghi chú chiếm không gian còn lại */
+        flex-grow: 1; 
     }
+    /* Cột 4: Số lượng */
     .meal-detail-header .item-quantity,
     .meal-detail-item .item-quantity {
-        width: 70px; /* Cột Số lượng */
+        width: 70px; /* Số lượng */
         text-align: center;
         flex-shrink: 0;
     }
-    /* Cột Hành động */
+    /* Cột 5: HÀNH ĐỘNG/STATUS (80px) */
+    .meal-detail-header > div:nth-child(5),
+    .meal-detail-item > div:nth-child(5) {
+        width: 80px; 
+        text-align: center;
+        flex-shrink: 0;
+    }
+    /* Cột 6: CHỌN/CHECKBOX (30px - ĐÃ CHUYỂN VỀ CUỐI) */
     .meal-detail-header > div:last-child,
     .meal-detail-item > div:last-child {
-        width: 80px; 
+        width: 30px; 
         text-align: center;
         flex-shrink: 0;
     }

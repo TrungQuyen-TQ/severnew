@@ -1,4 +1,4 @@
-// File: chef.js (ĐÃ SỬA LỖI LOGOUT VÀ TỐI ƯU LOGIC NÚT)
+// File: chef.js (ĐÃ CẬP NHẬT LOGIC BILL DISAPPEAR VÀ VỊ TRÍ CỘT)
 
 // ✅ HÀM LOGOUT PHẢI NẰM Ở PHẠM VI TOÀN CỤC
 async function logout() {
@@ -39,7 +39,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function handleAuthError(response) {
     if (response.status === 401 || response.status === 403) {
       console.warn("Lỗi xác thực (401/403). Đang chuyển hướng về trang đăng nhập.");
-      // Gọi hàm logout toàn cục
       logout(); 
       return true;
     }
@@ -164,19 +163,19 @@ document.addEventListener("DOMContentLoaded", () => {
     detailsTitle.textContent = `Chi Tiết Bill #${bill.orderId} (${bill.tableName})`;
     completeOrderBtn.dataset.orderId = bill.orderId;
     
-    // 1. Định nghĩa hàng tiêu đề
+    // 1. Định nghĩa hàng tiêu đề (CHỌN Ở CUỐI)
     const headerRow = `
         <div class="meal-detail-header">
             <div style="font-weight: bold; margin-right: 10px; width: 30px;">STT</div>
-            <div style="font-weight: bold; width: 30px;">Chọn</div>
             <div style="font-weight: bold; width: 60px;">Hình ảnh</div>
             <div class="item-info" style="font-weight: bold;">Tên món ăn & Ghi chú</div>
             <div class="item-quantity" style="font-weight: bold; color: var(--dark-text);">Số lượng</div>
-            <div style="font-weight: bold; width: 80px; text-align: center;">Hành động</div>
+            <div style="font-weight: bold; width: 80px; text-align: center;">Hành động</div> 
+            <div style="font-weight: bold; width: 30px; text-align: center;">Chọn</div>
         </div>
     `;
 
-    // 2. Render danh sách món ăn
+    // 2. Render danh sách món ăn (Cú pháp HTML đã sửa và vị trí cột đã đổi)
     const mealItemsHtml = bill.items
       .map(
         (meal, index) => {
@@ -188,10 +187,8 @@ document.addEventListener("DOMContentLoaded", () => {
             
             let checkboxHtml = '';
             if (isPending) {
-                // Checkbox cho món PENDING
                 checkboxHtml = `<input type="checkbox" class="cook-checkbox" data-detail-id="${detailId}">`;
             } else if (isCooked) {
-                // Dấu tích cho món đã nấu xong
                 checkboxHtml = `<span style="color: #27ae60;">✔</span>`; 
             }
             
@@ -202,22 +199,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 actionHtml = `<span style="color: #27ae60; font-weight: bold;">Đã Nấu</span>`;
             } 
             
-            // Món COOKED sẽ có class done-item
             const itemClass = isCooked ? 'done-item' : '';
             
             return `
                 <div class="meal-detail-item ${itemClass}">
-                    <div style="font-weight: bold; margin-right: 10px; width: 30px;">${index + 1}.</div>
-                    <div style="width: 30px; text-align: center;">${checkboxHtml}</div> 
-                    <img src="${meal.image_url || "/images/default-food.png"}" alt="${meal.Ten_Mon_An}">
-                    <div class="item-info">
+                    <div style="font-weight: bold; margin-right: 10px; width: 30px;">${index + 1}.</div> 
+                    <img src="${meal.image_url || "/images/default-food.png"}" alt="${meal.Ten_Mon_An}"> 
+                    <div class="item-info"> 
                         <strong>${meal.Ten_Mon_An}</strong>
                         <span style="color: #888;">${
                           meal.Ghi_Chu ? `(Ghi chú: ${meal.Ghi_Chu})` : ""
                         }</span>
                     </div>
-                    <div class="item-quantity">${meal.So_Luong}</div>
-                    <div style="width: 80px; text-align: center;">${actionHtml}</div>
+                    <div class="item-quantity">${meal.So_Luong}</div> 
+                    <div style="width: 80px; text-align: center;">${actionHtml}</div> 
+                    <div style="width: 30px; text-align: center;">${checkboxHtml}</div> 
                 </div>
             `;
         }
@@ -230,15 +226,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const updateCompleteButton = () => {
         const checkedCount = document.querySelectorAll('#bill-details-panel .cook-checkbox:checked').length;
         
-        // 🔹 1. Đổi chữ nút
         completeOrderBtn.textContent = checkedCount > 0 
             ? `Hoàn Thành ${checkedCount} Món Đã Chọn`
             : 'Chưa có món nào được chọn';
         
-        // 🔹 2. Kích hoạt/Vô hiệu hóa nút
         completeOrderBtn.disabled = checkedCount === 0;
         
-        // 🔹 3. Ẩn nút nếu Bill đã xong bếp
         const hasPendingItems = bill.items.some(item => item.Trang_Thai_Mon === 'PENDING');
 
         if (!hasPendingItems) {
@@ -320,11 +313,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (successCount > 0) {
           alert(`✅ Đã hoàn thành nấu ${successCount} món ăn. \n${errorMessages.join('\n')}`);
       } else {
-          // Chỉ báo lỗi nếu không có món nào được cập nhật
           throw new Error("Không có món nào được cập nhật thành công.");
       }
 
-      // Tải lại: Bill sẽ được sắp xếp lại
+      // 2. ✅ GỌI API SERVER ĐỂ KIỂM TRA & CẬP NHẬT TRẠNG THÁI BILL TỔNG THỂ
+      await updateOrderStatusIfFullyCooked(orderId);
+
+
+      // Tải lại: Bill sẽ biến mất nếu trạng thái orders.status đã được chuyển sang COOKED
       await fetchAndGroupOrders();
       
     } catch (error) {
@@ -334,6 +330,26 @@ document.addEventListener("DOMContentLoaded", () => {
       // Trạng thái nút sẽ được cập nhật lại sau khi fetchAndGroupOrders xong
     }
   }
+  
+  // ✅ HÀM MỚI: GỌI API SERVER ĐỂ CẬP NHẬT TRẠNG THÁI BILL TỔNG THỂ
+  async function updateOrderStatusIfFullyCooked(orderId) {
+    // Đảm bảo URL cơ sở có sẵn
+    const apiBaseUrl = "http://localhost:3000/api";
+    try {
+        const response = await fetch(`${apiBaseUrl}/chef/check-complete-cooking/${orderId}`, {
+            method: 'PUT',
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            const errorBody = await response.json();
+            console.error("Lỗi kiểm tra hoàn thành bill:", errorBody.error);
+        }
+        // Nếu thành công, orders.status đã được chuyển sang 'COOKED' trên server
+    } catch (error) {
+        console.error("Lỗi mạng khi cập nhật trạng thái bill:", error);
+    }
+}
 
   function goBackToBills() {
     billDetailsPanel.classList.add("hidden");
