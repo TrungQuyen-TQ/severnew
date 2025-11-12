@@ -11,8 +11,9 @@ const { authenticateToken, authorizeAdmin } = require("../middlewares/auth");
 const dbConfig = config.get("dbConfig");
 const JWT_SECRET = config.get("JWT_SECRET");
 
+// /routes/api.js (Vui lòng thay thế logic của router.get("/chef/pending-meals"))
+
 router.get("/chef/pending-meals", authenticateToken, async (req, res) => {
-  // Kiểm tra vai trò
   if (req.user.role !== "CHEF") {
     return res
       .status(403)
@@ -20,42 +21,42 @@ router.get("/chef/pending-meals", authenticateToken, async (req, res) => {
   }
 
   const sql = `
-        SELECT
-            od.id AS Chi_Tiet_ID,           -- ID chi tiết đơn hàng (Cần cho logic checkbox)
-            od.status AS Trang_Thai_Mon,    -- Trạng thái chi tiết (Cần cho logic checkbox)
-            t.name AS Ten_Ban,
-            o.id AS Order_ID,
-            p.name AS Ten_Mon_An,
-            p.image_url,                    -- Cần để hiển thị hình ảnh
-            od.quantity AS So_Luong,
-            od.note AS Ghi_Chu,
-            o.created_at AS Thoi_Gian_Order
-        FROM
-            orders o
-        JOIN
-            tables t ON o.table_id = t.id
-        JOIN
-            order_details od ON o.id = od.order_id
-        JOIN
-            products p ON od.product_id = p.id
-        WHERE
-            -- LẤY TẤT CẢ CÁC MÓN CHƯA ĐƯỢC SERVED (KỂ CẢ PENDING VÀ COOKED)
-            od.status IN ('PENDING', 'COOKED') 
-        ORDER BY
-            o.created_at ASC, od.id ASC;
-    `;
+      SELECT
+          od.id AS Chi_Tiet_ID,
+          od.status AS Trang_Thai_Mon,
+          t.name AS Ten_Ban,
+          o.id AS Order_ID,
+          p.name AS Ten_Mon_An,
+          p.image_url,
+          od.quantity AS So_Luong,
+          od.note AS Ghi_Chu,
+          o.created_at AS Thoi_Gian_Order
+      FROM
+          orders o
+      JOIN
+          tables t ON o.table_id = t.id
+      JOIN
+          order_details od ON o.id = od.order_id
+      JOIN
+          products p ON od.product_id = p.id
+      WHERE
+          o.status = 'PENDING' -- Lọc theo trạng thái tổng thể của Bill
+      ORDER BY
+          o.created_at ASC, od.id ASC;
+  `;
 
   try {
     const connection = await mysql.createConnection(dbConfig);
-    // ✅ ĐÃ ĐỔI TÊN THÀNH 'results'
     const [results] = await connection.execute(sql); 
     await connection.end();
-    res.json(results); // ✅ Trả về biến 'results'
+    res.json(results);
   } catch (error) {
     console.error("Lỗi API [GET /chef/pending-meals]:", error);
     res.status(500).json({ error: "Lỗi máy chủ khi truy vấn món ăn." });
   }
 });
+
+// ... (các routes khác) ...
 
 // Chức năng B: Cập nhật trạng thái đơn hàng thành 'SERVED'
 router.put(
