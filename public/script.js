@@ -417,9 +417,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // =================== MÓN ĐÃ HOÀN THÀNH ===================
 
-  // 🟩 1. Load danh sách bill đã COOKED
+  // 🟩 1. Load danh sách bill có món đã COOKED
   async function loadCookedBills() {
-    console.log("📦 Đang tải danh sách bill COOKED...");
+    console.log("📦 Đang tải danh sách bill có món đã nấu...");
 
     const listDiv = document.getElementById("bills-list");
     const detailDiv = document.getElementById("bill-detail");
@@ -430,10 +430,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("http://localhost:3000/api/cooked-orders", {
         credentials: "include",
       });
+      if (!res.ok) throw new Error("Không thể tải danh sách bill từ server.");
       const bills = await res.json();
 
       if (!Array.isArray(bills) || bills.length === 0) {
-        listDiv.innerHTML = "<p>✅ Không có bill nào đang chờ phục vụ.</p>";
+        listDiv.innerHTML = "<p>✅ Hiện chưa có bill nào có món nấu xong.</p>";
         return;
       }
 
@@ -443,6 +444,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const billDiv = document.createElement("div");
         billDiv.classList.add("bill-item");
         billDiv.dataset.id = bill.Order_ID;
+
         billDiv.innerHTML = `
         <strong>Bill ${bill.Order_ID}</strong> (Bàn: ${bill.Ten_Ban})<br>
         <small>Lúc: ${new Date(
@@ -461,6 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
         listDiv.appendChild(billDiv);
       });
     } catch (error) {
+      console.error("❌ Lỗi loadCookedBills:", error);
       listDiv.innerHTML = `<p class="error">❌ ${error.message}</p>`;
     }
   }
