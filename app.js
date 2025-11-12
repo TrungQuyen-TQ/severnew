@@ -1,74 +1,162 @@
-// app.js (Tệp server chính - HOÀN CHỈNH)
+// app.js - Server Node.js hoàn chỉnh
+const express = require("express");
+const path = require("path");
+const favicon = require("serve-favicon");
+const logger = require("morgan");
+const cookieParser = require("cookie-parser");
+const bodyParser = require("body-parser");
+const cors = require("cors");
 
-var express = require('express');
-var path = require('path');
-var favicon = require('serve-favicon');
-var logger = require('morgan');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
-var cors = require('cors'); 
+// Import các routes
+const apiRouter = require("./routes/api");
+const authRouter = require("./routes/auth");
+const usersRouter = require("./routes/users");
+const productsRouter = require("./routes/products");
+const tablesRouter = require("./routes/tables");
+const orderRouter = require("./routes/order");
+const revenueRouter = require("./routes/revenue");
+const revenueByCategoryRouter = require("./routes/revenueByCategory");
+const topProductsRouter = require("./routes/topProducts");
 
-// Import các routes đã tách
-var orderRouter = require('./routes/order');
-var apiRouter = require('./routes/api'); 
+// Import của menu
+const ordersMenuRouter = require("./routes/orders_menu");
+const changeTableMenuRouter = require("./routes/change-table_menu");
+const orderCookesMenuRouter = require("./routes/cooked-orders_menu");
+const cookedOrdersDetailMenuRouter = require("./routes/cooked-orders-detail_menu");
+const cookedToServedMenuRouter = require("./routes/cooked-to-served_menu");
 
-var app = express();
+const app = express();
 
-// view engine setup (Cần thiết cho VNPAY views)
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
+// Normalize ES module default exports when routes are authored as ESM
+function unwrapModule(m) {
+  return m && m.__esModule && m.default
+    ? m.default
+    : m && m.default
+    ? m.default
+    : m;
+}
 
-// === CẤU HÌNH MIDDLEWARE ===
-app.use(logger('dev'));
-app.use(cors()); // Cho phép các yêu cầu từ frontend khác domain
-app.use(bodyParser.json()); // Xử lý JSON body (Cần cho POST /api/login)
+const _apiRouter = unwrapModule(apiRouter);
+const _authRouter = unwrapModule(authRouter);
+const _usersRouter = unwrapModule(usersRouter);
+const _productsRouter = unwrapModule(productsRouter);
+const _tablesRouter = unwrapModule(tablesRouter);
+const _orderRouter = unwrapModule(orderRouter);
+const _revenueRouter = unwrapModule(revenueRouter);
+const _revenueByCategoryRouter = unwrapModule(revenueByCategoryRouter);
+const _topProductsRouter = unwrapModule(topProductsRouter);
+const _ordersMenuRouter = unwrapModule(ordersMenuRouter);
+const _changeTableMenuRouter = unwrapModule(changeTableMenuRouter);
+const _orderCookesMenuRouter = unwrapModule(orderCookesMenuRouter);
+const _cookedOrdersDetailMenuRouter = unwrapModule(
+  cookedOrdersDetailMenuRouter
+);
+const _cookedToServedMenuRouter = unwrapModule(cookedToServedMenuRouter);
+
+// View engine (VNPAY)
+app.set("views", path.join(__dirname, "views"));
+app.set("view engine", "jade");
+
+// === MIDDLEWARE ===
+app.use(logger("dev"));
+app.use(cors({ origin: true, credentials: true })); // Cho phép frontend khác domain gửi cookie
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname)));
 
-// === ĐĂNG KÝ ROUTES ===
+// Static files
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // phục vụ ảnh upload
 
-// 1. Route gốc: Chuyển hướng đến trang VNPAY mặc định
-app.get('/', function(req, res, next) {
-    res.redirect('/order'); 
+// === ROUTES ===
+
+// Health check
+app.get("/", (req, res) => {
+  res.send("Server is running successfully 🚀");
+});
+// API routes
+app.use("/api", _apiRouter);
+// Menu routes
+app.use("/api", _ordersMenuRouter);
+app.use("/api", _changeTableMenuRouter);
+app.use("/api", _orderCookesMenuRouter);
+app.use("/api", _cookedOrdersDetailMenuRouter);
+app.use("/api", _cookedToServedMenuRouter);
+
+// Auth
+// Auth
+app.use("/api/auth", _authRouter);
+// Also expose legacy /api/login route (mount auth routes at /api) so clients
+// that expect POST /api/login continue to work.
+app.use("/api", _authRouter);
+
+// Explicit mapping: POST /api/login -> delegate to auth router's /login handler
+app.post("/api/login", (req, res, next) => {
+  // Preserve original url, then dispatch to the auth router as if the path is /login
+  const originalUrl = req.url;
+  req.url = "/login";
+  // Use router.handle to delegate; restore url afterwards.
+  try {
+    _authRouter.handle(req, res, (err) => {
+      req.url = originalUrl;
+      if (err) return next(err);
+      // If handler did not end the response, continue
+      next();
+    });
+  } catch (err) {
+    req.url = originalUrl;
+    next(err);
+  }
 });
 
-// 2. Đăng ký Router API và VNPAY
-app.use('/order', orderRouter); // Routes VNPAY
-app.use('/api', apiRouter);     // Routes Quản lý Món ăn/Login
+// CRUD
+app.use("/api/users", _usersRouter); // Manager only
+app.use("/api/products", _productsRouter); // Manager CRUD, Chef đọc
+app.use("/api/tables", _tablesRouter); // Manager CRUD, Employee đọc
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-    var err = new Error('Not Found');
-    err.status = 404;
-    next(err);
+// VNPAY / Orders
+// VNPAY / Orders
+app.use("/order", _orderRouter);
+
+// Revenue
+app.use("/api/revenue", _revenueRouter);
+app.use("/api/revenue", _revenueByCategoryRouter);
+app.use("/api/top-products", _topProductsRouter);
+
+// === ERROR HANDLING ===
+
+// catch 404
+app.use((req, res, next) => {
+  const err = new Error("Not Found");
+  err.status = 404;
+  next(err);
 });
 
 // error handler
-app.use(function(err, req, res, next) {
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
+app.use((err, req, res, next) => {
+  res.locals.message = err.message;
+  res.locals.error = req.app.get("env") === "development" ? err : {};
 
-    res.status(err.status || 500);
+  res.status(err.status || 500);
 
-    // Trả về JSON cho API
-    if (req.originalUrl.startsWith('/api') || req.accepts('json')) {
-        return res.json({ error: res.locals.message, status: res.locals.error.status || 500 });
-    }
+  // Trả JSON cho API
+  if (req.originalUrl.startsWith("/api") || req.accepts("json")) {
+    return res.json({
+      error: res.locals.message,
+      status: res.locals.error.status || 500,
+    });
+  }
 
-    // Render View cho các lỗi không phải API (ví dụ: lỗi 404 trên /order)
-    res.render('error');
+  // Render view cho VNPAY
+  res.render("error");
+});
+
+// === KHỞI ĐỘNG SERVER ===
+const PORT = process.env.PORT || 3000;
+const server = app.listen(PORT, () => {
+  console.log(
+    `Server đã khởi động tại: http://localhost:${server.address().port}`
+  );
 });
 
 module.exports = app;
-
-// === KHỞI ĐỘNG SERVER ===
-// LƯU Ý: Nếu bạn muốn chạy trên cổng 8888 để khớp với ứng dụng Java Desktop, hãy sửa PORT.
-const PORT = process.env.PORT || 3000; 
-
-// Khởi động server
-const server = app.listen(PORT, function() {
-    console.log('Express server listening on port ' + server.address().port);
-    console.log(`Server đã khởi động thành công tại: http://localhost:${server.address().port}`);
-});
