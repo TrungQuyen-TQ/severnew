@@ -684,3 +684,25 @@ tr:nth-child(even) {
     max-height: none;
   }
 }
+
+
+/* Thêm vào cuối file style.css */
+
+/* Style cho nút "Xong" */
+.cooked-btn {
+    background-color: #f39c12; /* Màu cam */
+    color: white;
+    padding: 5px 10px;
+    font-size: 0.9em;
+    border-radius: 4px; /* Thêm bo góc */
+    font-weight: bold;
+}
+.cooked-btn:hover {
+    background-color: #d35400;
+}
+
+/* Style cho món đã làm xong (COOKED/SERVED) */
+.meal-detail-item.done-item {
+    opacity: 0.6; /* Mờ đi để phân biệt */
+    background-color: #f9f9f9;
+}

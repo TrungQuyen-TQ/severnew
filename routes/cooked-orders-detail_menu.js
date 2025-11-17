@@ -23,7 +23,7 @@ router.get("/cooked-orders/:id", authenticateToken, async (req, res) => {
       FROM order_details od
       JOIN products p ON od.product_id = p.id
       WHERE od.order_id = ?
-        AND od.status != 'SERVED';
+        AND od.status = 'COOKED';
     `;
     const conn = await mysql.createConnection(dbConfig);
     const [details] = await conn.execute(sql, [id]);

@@ -24,6 +24,8 @@ const changeTableMenuRouter = require("./routes/change-table_menu");
 const orderCookesMenuRouter = require("./routes/cooked-orders_menu");
 const cookedOrdersDetailMenuRouter = require("./routes/cooked-orders-detail_menu");
 const cookedToServedMenuRouter = require("./routes/cooked-to-served_menu");
+// ✅ IMPORT API MỚI
+const cookMealMenuRouter = require("./routes/cook-meal_menu");
 
 const app = express();
 
@@ -52,6 +54,8 @@ const _cookedOrdersDetailMenuRouter = unwrapModule(
   cookedOrdersDetailMenuRouter
 );
 const _cookedToServedMenuRouter = unwrapModule(cookedToServedMenuRouter);
+// ✅ UNWRAP API MỚI
+const _cookMealMenuRouter = unwrapModule(cookMealMenuRouter);
 
 // View engine (VNPAY)
 app.set("views", path.join(__dirname, "views"));
@@ -82,6 +86,9 @@ app.use("/api", _changeTableMenuRouter);
 app.use("/api", _orderCookesMenuRouter);
 app.use("/api", _cookedOrdersDetailMenuRouter);
 app.use("/api", _cookedToServedMenuRouter);
+// ✅ SỬ DỤNG API MỚI
+app.use("/api", _cookMealMenuRouter);
+
 
 // Auth
 // Auth
@@ -118,6 +125,7 @@ app.use("/api/tables", _tablesRouter); // Manager CRUD, Employee đọc
 // VNPAY / Orders
 app.use("/order", _orderRouter);
 
+app.set('view engine', 'jade');
 // Revenue
 app.use("/api/revenue", _revenueRouter);
 app.use("/api/revenue", _revenueByCategoryRouter);
