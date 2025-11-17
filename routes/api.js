@@ -40,7 +40,7 @@ router.get("/chef/pending-meals", authenticateToken, async (req, res) => {
       JOIN
           products p ON od.product_id = p.id
       WHERE
-          o.status = 'PENDING' -- Lọc theo trạng thái tổng thể của Bill
+          od.status = 'PENDING' -- Lọc theo trạng thái tổng thể của Bill
       ORDER BY
           o.created_at ASC, od.id ASC;
   `;
