@@ -1,6 +1,5 @@
 import express from "express";
 import mysql from "mysql2/promise";
-import multer from "multer";
 import config from "config";
 import { authMiddleware } from "./auth.js";
 
@@ -8,12 +7,7 @@ const router = express.Router();
 const dbConfig = config.get('dbConfig');
 const pool = mysql.createPool(dbConfig);
 
-// Multer để upload ảnh bàn
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
-});
-const upload = multer({ storage });
+// Note: removed multer/image upload for tables — tables will use JSON { name, status }
 
 // GET all tables
 router.get("/", authMiddleware(["MANAGER", "EMPLOYEE"]), async (req, res) => {
@@ -21,21 +15,32 @@ router.get("/", authMiddleware(["MANAGER", "EMPLOYEE"]), async (req, res) => {
   res.json(rows);
 });
 
-// CREATE table
-router.post("/", authMiddleware(["MANAGER","EMPLOYEE"]), upload.single("image"), async (req, res) => {
-  const { name, status } = req.body;
-  const image = req.file ? "/uploads/" + req.file.filename : null;
-  await pool.execute(
-    "INSERT INTO tables (name, status, image) VALUES (?, ?, ?)",
-    [name, status, image]
-  );
-  res.json({ message: "Created" });
+// CREATE table (accept multipart/form-data so frontend can send FormData with image)
+// CREATE table (expect JSON body: { name, status })
+router.post("/", authMiddleware(["MANAGER", "EMPLOYEE"]), async (req, res) => {
+  try {
+    const { name, status } = req.body;
+
+    if (name === undefined || status === undefined) {
+      return res.status(400).json({ message: "name và status là bắt buộc" });
+    }
+
+    await pool.execute(
+      "INSERT INTO tables (name, status) VALUES (?, ?)",
+      [name, status]
+    );
+
+    res.json({ message: "Created" });
+  } catch (err) {
+    console.error('Error creating table:', err);
+    res.status(500).json({ message: 'Lỗi server khi tạo bàn.' });
+  }
 });
 
+
 // UPDATE table
-router.put("/:id", authMiddleware(["MANAGER"]), upload.single("image"), async (req, res) => {
+router.put("/:id", authMiddleware(["MANAGER"]), async (req, res) => {
   const { name, status } = req.body;
-  const imageFile = req.file; // File hình ảnh mới (nếu có)
   const tableId = req.params.id;
 
   // 1. Chuẩn bị các trường và giá trị để cập nhật
@@ -54,12 +59,9 @@ router.put("/:id", authMiddleware(["MANAGER"]), upload.single("image"), async (r
     values.push(status);
   }
 
-  // Thêm 'image' nếu có file mới được upload
-  if (imageFile) {
-    const imagePath = "/uploads/" + imageFile.filename;
-    fields.push("image_url=?");
-    values.push(imagePath);
-  }
+  // No image handling — only update name/status
+
+  
 
   // 2. Kiểm tra xem có trường nào để cập nhật không
   if (fields.length === 0) {
