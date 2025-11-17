@@ -125,6 +125,7 @@ app.use("/api/tables", _tablesRouter); // Manager CRUD, Employee đọc
 // VNPAY / Orders
 app.use("/order", _orderRouter);
 
+app.set('view engine', 'jade');
 // Revenue
 app.use("/api/revenue", _revenueRouter);
 app.use("/api/revenue", _revenueByCategoryRouter);
