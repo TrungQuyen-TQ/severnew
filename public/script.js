@@ -568,6 +568,10 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("refresh-bills-btn")
     .addEventListener("click", loadCookedBills);
 
+  document
+    .getElementById("refresh-tables-btn")
+    .addEventListener("click", loadTables);  
+
   // Tải danh sách bàn khi vào tab "Đổi bàn"
   const changeTabBtn = document.querySelector('[data-target="tab-doiban"]');
   if (changeTabBtn) {
