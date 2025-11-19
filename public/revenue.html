@@ -22,10 +22,11 @@
           <button id="loadBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold">
             Tải dữ liệu
           </button>
-
+          
           <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold">
             Đăng xuất
           </button>
+          
         </div>
       </header>
 
@@ -49,39 +50,40 @@
         </div>
       </section>
 
-      <!-- Line Chart -->
+      <!-- Biểu đồ doanh thu -->
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div class="bg-gray-800 rounded-xl p-6 shadow-lg">
           <h2 class="text-xl font-semibold mb-4">Biểu đồ doanh thu theo ngày (Line)</h2>
-          <div class="relative h-64">
-            <canvas id="lineChart"></canvas>
+          <div class="relative h-64"> <!-- THÊM ĐOẠN NÀY -->
+            <canvas id="lineChart"></canvas> <!-- XÓA height="120" ở đây -->
           </div>
         </div>
 
-        <!-- Bar Chart -->
+        <!-- Biểu đồ doanh thu theo ngày (Cột) -->
         <div class="bg-gray-800 rounded-xl p-6 shadow-lg">
           <h2 class="text-xl font-semibold mb-4">Biểu đồ doanh thu theo ngày (Cột)</h2>
-          <div class="relative h-64">
-            <canvas id="barChart"></canvas>
+          <div class="relative h-64"> <!-- THÊM ĐOẠN NÀY -->
+            <canvas id="barChart"></canvas> <!-- XÓA height="120" ở đây -->
           </div>
         </div>
       </section>
 
-      <!-- Pie Chart -->
+      <!-- Biểu đồ tròn -->
       <section class="bg-gray-800 rounded-xl p-6 mb-8 shadow-lg">
         <h2 class="text-xl font-semibold mb-4">Tỷ lệ doanh thu theo danh mục món ăn</h2>
         <div class="relative h-80 w-full md:w-1/2 mx-auto">
-          <canvas id="pieChart"></canvas>
+          <!-- THÊM ĐOẠN NÀY, có thể thêm w-1/2 và mx-auto để căn giữa và giới hạn chiều rộng cho biểu đồ tròn -->
+          <canvas id="pieChart"></canvas> <!-- XÓA height="120" ở đây -->
         </div>
       </section>
 
-      <!-- Top Products -->
+      <!-- Top món bán chạy -->
       <section class="bg-gray-800 rounded-xl p-6 mb-8 shadow-lg">
         <h2 class="text-xl font-semibold mb-4">Top món bán chạy nhất</h2>
         <div id="topProducts" class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
       </section>
 
-      <!-- Revenue Table -->
+      <!-- Bảng chi tiết doanh thu -->
       <section class="bg-gray-800 rounded-xl p-6 shadow-lg">
         <h2 class="text-xl font-semibold mb-4">Chi tiết doanh thu theo ngày</h2>
         <table class="w-full text-center border border-gray-700">
@@ -94,13 +96,417 @@
           <tbody id="revenueTable"></tbody>
         </table>
       </section>
-
     </main>
   </div>
 
-  <!-- Gọi file JS -->
-  <script src="revenue.js"></script>
+  <script>
+    async function loadRevenue() {
+      const [year, month] = document.getElementById("monthPicker").value.split("-");
 
+      // === 1. Reset tất cả các phần tử hiển thị dữ liệu VỀ TRẠNG THÁI MẶC ĐỊNH ===
+      document.getElementById("totalRevenue").innerText = "0 VNĐ";
+      document.getElementById("totalOrders").innerText = "0";
+      document.getElementById("bestDay").innerText = "--";
+      document.getElementById("growth").innerText = "--%";
+      document.getElementById("revenueTable").innerHTML = ""; // Xóa nội dung bảng
+      document.getElementById("topProducts").innerHTML = `
+      <div class="col-span-full text-center text-gray-400">Đang tải Top sản phẩm...</div>
+    `; // Hiển thị trạng thái tải cho top sản phẩm
+
+      // === 2. Hủy các biểu đồ hiện có để tránh lỗi và sẵn sàng vẽ lại ===
+      // Kiểm tra nếu nó là một instance của Chart trước khi destroy
+      if (window.lineChart instanceof Chart) {
+        window.lineChart.destroy();
+        window.lineChart = null;
+      }
+      if (window.barChart instanceof Chart) {
+        window.barChart.destroy();
+        window.barChart = null;
+      }
+      if (window.pieChart instanceof Chart) {
+        window.pieChart.destroy();
+        window.pieChart = null;
+      }
+
+      // === 3. Gọi API lấy dữ liệu doanh thu hàng ngày ===
+      const res = await fetch(`/api/revenue?month=${month}&year=${year}`);
+      const data = await res.json();
+      const rows = data.daily_details || [];
+
+      // === 4. Xử lý trường hợp không có dữ liệu ===
+      if (rows.length === 0) {
+        alert("Không có dữ liệu doanh thu cho tháng này!");
+        renderEmptyCharts(); // Hàm này sẽ tạo các biểu đồ rỗng hoặc với thông báo
+        document.getElementById("topProducts").innerHTML = `
+        <div class="col-span-full text-center text-gray-400">Không có dữ liệu sản phẩm bán chạy.</div>
+      `;
+        // Chỉ gọi loadCategoryRevenue nếu muốn hiển thị biểu đồ rỗng cho category
+        // Nếu không, biểu đồ pie cũng sẽ bị trống bởi renderEmptyCharts
+        loadCategoryRevenue(); // Vẫn gọi để xử lý riêng trường hợp category không có dữ liệu
+        return; // Dừng hàm tại đây nếu không có dữ liệu
+      }
+
+      // === 5. Xử lý và hiển thị các số liệu thống kê tổng hợp ===
+      const total = rows.reduce((sum, r) => sum + Number(r.revenue), 0);
+      document.getElementById("totalRevenue").innerText = total.toLocaleString("vi-VN") + " VNĐ";
+      document.getElementById("totalOrders").innerText = rows.length.toString(); // Số đơn hàng chính là số ngày có doanh thu ở đây
+
+      // Ngày cao nhất
+      const best = rows.reduce((max, r) => Number(r.revenue) > Number(max.revenue) ? r : max, rows[0]);
+      document.getElementById("bestDay").innerText = best.date;
+
+      // Tăng trưởng (cần kiểm tra để tránh chia cho 0 nếu chỉ có 1 ngày hoặc doanh thu ngày đầu bằng 0)
+      let growth = "--%";
+      if (rows.length > 1 && Number(rows[0].revenue) !== 0) {
+        growth = (((Number(best.revenue) - Number(rows[0].revenue)) / Number(rows[0].revenue)) * 100).toFixed(1) + "%";
+      } else if (rows.length === 1 && Number(rows[0].revenue) > 0) {
+        growth = "N/A (Chỉ có 1 ngày)";
+      }
+      document.getElementById("growth").innerText = growth;
+
+      // === 6. Điền dữ liệu vào bảng chi tiết doanh thu ===
+      const tbody = document.getElementById("revenueTable");
+      tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td class="border border-gray-700 py-2">${r.date}</td>
+        <td class="border border-gray-700 py-2">${Number(r.revenue).toLocaleString("vi-VN")} VNĐ</td>
+      </tr>
+    `).join("");
+
+      // === 7. Render các biểu đồ và tải dữ liệu bổ sung ===
+      renderCharts(rows); // Vẽ biểu đồ đường và cột với dữ liệu mới
+      loadTopProducts(); // Tải và hiển thị top sản phẩm bán chạy
+      loadCategoryRevenue(); // Tải và hiển thị doanh thu theo danh mục
+    }
+    async function logout() {
+        try {
+            // 1. Gọi API server để xóa HttpOnly Cookie
+            // (Sử dụng đường dẫn tương đối giống như các lệnh fetch khác trong file này)
+            await fetch('/api/logout', { 
+                method: 'POST', 
+                credentials: 'include' // Quan trọng để gửi cookie
+            });
+        } catch (error) {
+            console.error("Lỗi khi gọi API logout:", error);
+            // Vẫn tiếp tục dù server có lỗi
+        }
+        
+        // 2. Xóa thông tin đã lưu trên client
+        localStorage.removeItem("currentUsername"); 
+        localStorage.removeItem("userRole"); 
+
+        // 3. Chuyển hướng về trang đăng nhập
+        window.location.href = "/login.html";
+    }
+    // Hàm để vẽ các biểu đồ chính (Line và Bar)
+    function renderCharts(rows) {
+      const labels = rows.map(r => r.date);
+      const values = rows.map(r => Number(r.revenue));
+
+      // Line chart
+      const ctx1 = document.getElementById("lineChart").getContext("2d");
+      if (window.lineChart instanceof Chart) window.lineChart.destroy();
+      window.lineChart = new Chart(ctx1, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Doanh thu (VNĐ)",
+            data: values,
+            borderColor: "#60a5fa",
+            backgroundColor: "rgba(59,130,246,0.3)",
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function (value, index, values) {
+                  return value.toLocaleString("vi-VN"); // Định dạng tiền tệ
+                }
+              }
+            }
+          },
+          plugins: {
+            title: {
+              display: false // Ẩn tiêu đề nếu có dữ liệu
+            }
+          }
+        }
+      });
+
+      // Bar chart
+      const ctx2 = document.getElementById("barChart").getContext("2d");
+      if (window.barChart instanceof Chart) window.barChart.destroy();
+      window.barChart = new Chart(ctx2, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Doanh thu (VNĐ)",
+            data: values,
+            backgroundColor: "#34d399"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function (value, index, values) {
+                  return value.toLocaleString("vi-VN"); // Định dạng tiền tệ
+                }
+              }
+            },
+            x: { // Thêm tùy chọn cho trục x
+              barPercentage: 0.5, // Cột sẽ chiếm 50% không gian được phân bổ cho nó
+              categoryPercentage: 0.7 // Các danh mục sẽ chiếm 70% không gian trục x
+            }
+          },
+
+          plugins: {
+            title: {
+              display: false // Ẩn tiêu đề nếu có dữ liệu
+            }
+          }
+        }
+      });
+    }
+
+    // Hàm mới để render biểu đồ trống hoặc với thông báo khi không có dữ liệu
+    function renderEmptyCharts() {
+      const defaultChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              display: false // Ẩn ticks trục y
+            }
+          },
+          x: {
+            ticks: {
+              display: false // Ẩn ticks trục x
+            }
+          }
+        },
+        plugins: {
+          tooltip: {
+            enabled: false
+          },
+          legend: {
+            display: false
+          },
+          title: {
+            display: true,
+            text: 'Không có dữ liệu doanh thu',
+            color: '#aaa',
+            font: {
+              size: 16
+            }
+          }
+        }
+      };
+
+      const ctx1 = document.getElementById("lineChart").getContext("2d");
+      if (window.lineChart instanceof Chart) window.lineChart.destroy();
+      window.lineChart = new Chart(ctx1, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: []
+        },
+        options: defaultChartOptions
+      });
+
+      const ctx2 = document.getElementById("barChart").getContext("2d");
+      if (window.barChart instanceof Chart) window.barChart.destroy();
+      window.barChart = new Chart(ctx2, {
+        type: "bar",
+        data: {
+          labels: [],
+          datasets: []
+        },
+        options: defaultChartOptions
+      });
+
+      // Biểu đồ tròn (Doughnut) cũng cần xử lý riêng cho trường hợp trống
+      const ctx3 = document.getElementById("pieChart").getContext("2d");
+      if (window.pieChart instanceof Chart) window.pieChart.destroy();
+      window.pieChart = new Chart(ctx3, {
+        type: "doughnut",
+        data: {
+          labels: [],
+          datasets: []
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              enabled: false
+            },
+            legend: {
+              display: false
+            },
+            title: {
+              display: true,
+              text: 'Không có dữ liệu danh mục',
+              color: '#aaa',
+              font: {
+                size: 16
+              }
+            }
+          }
+        }
+      });
+    }
+
+
+    // Hàm để tải và hiển thị doanh thu theo danh mục
+    async function loadCategoryRevenue() {
+      const res = await fetch("/api/revenue/by-category");
+      const data = await res.json();
+
+      const ctx = document.getElementById("pieChart").getContext("2d");
+      if (window.pieChart instanceof Chart) window.pieChart.destroy();
+
+      if (data && data.length > 0) {
+        window.pieChart = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: data.map(d => d.category),
+            datasets: [{
+              data: data.map(d => Number(d.total_revenue)),
+              backgroundColor: ["#60a5fa", "#fbbf24", "#34d399", "#f87171", "#a78bfa", "#9ca3af", "#d1d5db"]
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: false // Ẩn tiêu đề nếu có dữ liệu
+              },
+              legend: {
+                position: 'right', // Hiển thị chú thích ở bên phải
+                labels: {
+                  color: '#ddd',
+                  font: {
+                    size: 14
+                  }
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    let label = context.label || '';
+                    if (label) {
+                      label += ': ';
+                    }
+                    if (context.raw !== null) {
+                      label += Number(context.raw).toLocaleString("vi-VN") + " VNĐ";
+                    }
+                    return label;
+                  }
+                }
+              }
+            }
+          }
+        });
+      } else {
+        // Nếu không có dữ liệu danh mục, hiển thị biểu đồ trống với thông báo
+        const defaultChartOptions = {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              enabled: false
+            },
+            legend: {
+              display: false
+            },
+            title: {
+              display: true,
+              text: 'Không có dữ liệu danh mục',
+              color: '#aaa',
+              font: {
+                size: 16
+              }
+            }
+          }
+        };
+        window.pieChart = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: [],
+            datasets: []
+          },
+          options: defaultChartOptions
+        });
+      }
+    }
+
+    // Hàm để tải và hiển thị top sản phẩm bán chạy
+    async function loadTopProducts() {
+      const container = document.getElementById("topProducts");
+      container.innerHTML = `<div class="col-span-full text-center text-gray-400">Đang tải...</div>`; // Thêm trạng thái loading
+
+
+      try {
+        const res = await fetch("/api/top-products");
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+          container.innerHTML = data.map(item => `
+          <div class="bg-gray-700 p-4 rounded-lg shadow">
+            <img src="${item.image_url || 'https://via.placeholder.com/150'}" alt="${item.name}" class="rounded-lg w-full h-32 object-cover mb-2">
+            <div class="font-semibold">${item.name}</div>
+            <div class="text-sm text-gray-300">Đã bán: ${item.total_sold}</div>
+          </div>
+        `).join("");
+        } else {
+          container.innerHTML = `
+          <div class="col-span-full text-center text-gray-400">Không có sản phẩm bán chạy trong tháng này.</div>
+        `;
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải top sản phẩm:", error);
+        container.innerHTML = `
+        <div class="col-span-full text-center text-red-400">Lỗi khi tải top sản phẩm: ${error.message}</div>
+      `;
+      }
+    }
+
+    // === ĐĂNG KÝ SỰ KIỆN ===
+
+    // Xử lý khi nhấn nút "Tải dữ liệu"
+    document.getElementById("loadBtn").addEventListener("click", loadRevenue);
+
+    document.getElementById("logoutBtn").addEventListener("click", logout); 
+
+    // Xử lý khi trang được tải lần đầu
+    window.addEventListener("load", () => {
+      // Đặt giá trị mặc định cho tháng chọn là tháng và năm hiện tại
+      const today = new Date();
+      const month = (today.getMonth() + 1).toString().padStart(2, '0'); // month là 0-indexed
+      const year = today.getFullYear();
+      document.getElementById("monthPicker").value = `${year}-${month}`;
+
+      loadRevenue(); // Tải dữ liệu lần đầu khi trang được load
+    });
+  </script>
 </body>
 
 </html>
