@@ -1,0 +1,72 @@
+doctype html
+html
+  head
+    title #{title} - Trạng thái thanh toán
+    meta(charset='utf-8')
+    link(rel='stylesheet', href='/stylesheets/bootstrap.min.css')
+    link(rel='stylesheet', href='/stylesheets/jumbotron-narrow.css')
+    style.
+      /* Tùy chỉnh nhẹ */
+      .status-box {
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        color: #fff;
+        text-align: center;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      }
+      .status-box h1 {
+        margin-top: 0;
+        font-weight: 700;
+      }
+      .icon-large {
+        font-size: 4em;
+        margin-bottom: 10px;
+      }
+      .panel-body strong {
+        display: inline-block;
+        width: 150px;
+      }
+  body
+    .container
+      .header.clearfix
+        h3.text-muted VNPAY DEMO
+
+      .jumbotron(style='padding: 20px; text-align: center; background-color: #f7f7f7;')
+        // THAY THẾ JUMBOTRON BẰNG HỘP HIỂN THỊ TRẠNG THÁI RÕ RÀNG HƠN
+        if status === 'Thành Công'
+          .status-box(style='background-color: #4CAF50;')
+            span.icon-large ✅
+            h1 Thanh Toán Thành Công!
+            p.lead Cảm ơn bạn đã thanh toán. Đơn hàng 
+              strong #{orderId}
+              | của bạn đang được xử lý.
+        else
+          .status-box(style='background-color: #f44336;')
+            span.icon-large ❌
+            h1 Giao Dịch Thất Bại
+            p.lead Đơn hàng 
+              strong #{orderId}
+              | không thể hoàn tất. Mã lỗi: #{code}.
+            
+      .panel.panel-default
+        .panel-heading 
+          h4.panel-title Chi Tiết Giao Dịch
+        .panel-body
+          p(class=(status === 'Thành Công' ? 'text-success' : 'text-danger'))
+            strong Trạng thái:
+            span(style='font-weight: bold;') #{status}
+          p
+            strong Mã Đơn hàng:
+            | #{orderId}
+          p
+            strong Thông báo hệ thống:
+            | #{message}
+          p
+            strong Mã phản hồi VNPAY:
+            | #{code}
+
+
+
+      footer.footer
+        p &copy; VNPAY 2025

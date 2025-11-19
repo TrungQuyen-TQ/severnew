@@ -86,6 +86,12 @@
             border-radius: 5px;
             background: #fff;
         }
+
+        /* Thêm style cho món đã làm xong (COOKED) */
+        .meal-detail-item.done-item {
+            opacity: 0.6; /* Mờ đi để phân biệt */
+            background-color: #f9f9f9;
+        }
         
         .meal-detail-item img {
             width: 60px;
@@ -104,13 +110,20 @@
             color: var(--danger-color);
         }
 
+        /* ✅ CẬP NHẬT STYLE NÚT HOÀN THÀNH */
         #complete-order-btn {
             width: 100%;
             margin-top: 30px;
-            background-color: var(--secondary-color);
+            background-color: var(--primary-color); /* Thay đổi màu cho nổi bật */
             padding: 15px;
             font-size: 1.1em;
+            transition: opacity 0.2s;
         }
+        #complete-order-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
 
         .empty-state {
             text-align: center;
@@ -134,6 +147,16 @@
                 padding-right: 0;
                 padding-bottom: 20px;
             }
+            /* Hiện nút Quay lại trên mobile */
+            #back-to-bills-btn {
+                display: block; 
+            }
+        }
+        @media (min-width: 769px) {
+            /* Ẩn nút Quay lại trên desktop */
+            #back-to-bills-btn {
+                display: none; 
+            }
         }
 
         /* Thêm style cho hàng tiêu đề cột */
@@ -151,22 +174,40 @@
     }
     
     /* Đảm bảo các cột trong header và item alignment */
+    /* Cột 1: STT */
     .meal-detail-header > div:nth-child(1),
     .meal-detail-item > div:nth-child(1) {
-        width: 30px; /* Cột STT */
+        width: 30px; /* STT */
     }
+    /* Cột 2: HÌNH ẢNH (60px) */
     .meal-detail-header > div:nth-child(2),
     .meal-detail-item img {
-        width: 60px; /* Cột Hình ảnh */
+        width: 60px;
         flex-shrink: 0;
     }
+    /* Cột 3: Tên món/Info */
     .meal-detail-header .item-info,
     .meal-detail-item .item-info {
-        flex-grow: 1; /* Cột Tên & Ghi chú chiếm không gian còn lại */
+        flex-grow: 1; 
     }
+    /* Cột 4: Số lượng */
     .meal-detail-header .item-quantity,
     .meal-detail-item .item-quantity {
-        width: 70px; /* Cột Số lượng */
+        width: 70px; /* Số lượng */
+        text-align: center;
+        flex-shrink: 0;
+    }
+    /* Cột 5: HÀNH ĐỘNG/STATUS (80px) */
+    .meal-detail-header > div:nth-child(5),
+    .meal-detail-item > div:nth-child(5) {
+        width: 80px; 
+        text-align: center;
+        flex-shrink: 0;
+    }
+    /* Cột 6: CHỌN/CHECKBOX (30px - ĐÃ CHUYỂN VỀ CUỐI) */
+    .meal-detail-header > div:last-child,
+    .meal-detail-item > div:last-child {
+        width: 30px; 
         text-align: center;
         flex-shrink: 0;
     }
@@ -179,7 +220,7 @@
             <h1>Bếp Trưởng - Quản Lý Bill</h1>
             <div>
                 <span id="welcome-message"></span>
-                <button id="logout-btn" onclick="logout()">Đăng Xuất</button>
+                <button id="logout-btn" onclick="logout()">Đăng Xuất</button> 
             </div>
         </div>
 
@@ -198,10 +239,10 @@
                 </div>
                 
                 <div id="meal-list-details">
-                    </div>
+                </div>
                 
                 <button id="complete-order-btn" data-order-id="">
-                    Hoàn Thành Bill & Phục Vụ
+                    Chưa có món nào được chọn
                 </button>
             </div>
         </div>
