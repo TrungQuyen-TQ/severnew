@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  # ... (dịch vụ app)
+  
+  # 2. Dịch vụ MySQL Database (db)
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      # ... (các biến môi trường DB)
+      MYSQL_ROOT_PASSWORD: root123!
+      MYSQL_DATABASE: mydb
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root123!
+    volumes:
+      - db_data:/var/lib/mysql 
+      # *** THÊM DÒNG NÀY ***
+      - ./init:/docker-entrypoint-initdb.d 
+
+volumes:
+  db_data:
