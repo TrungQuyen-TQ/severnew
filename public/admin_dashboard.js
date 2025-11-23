@@ -118,10 +118,7 @@ function generateFormHtml(entity, data) {
                     ).join('')}
                 </select>
             </div>
-            <div class="form-group">
-                <label>Ảnh (Tệp):</label><input type="file" name="image" accept="image/*">
-            </div>
-            ${data.image_url ? `<p>Ảnh hiện tại: <img src="${data.image_url}" style="width: 50px;"></p>` : ''}
+            <!-- image input removed as requested -->
         `;
     } else if (entity === 'user') {
         html = `
@@ -157,8 +154,8 @@ async function handleSubmitCrud() {
     let body;
     let headers = {};
 
-    if (currentEntity === 'product' || currentEntity === 'table') {
-        // **QUAN TRỌNG:** Sử dụng FormData khi upload file (dùng Multer ở backend)
+    if (currentEntity === 'product') {
+        // Use FormData for product because it may include an image
         body = new FormData(crudForm);
 
         // Đối với PUT/UPDATE, phải thêm ID vào URL
@@ -169,7 +166,19 @@ async function handleSubmitCrud() {
             body.append('category_id', crudForm.elements.category_id.value); 
         }
 
-    } else if (currentEntity === 'user') {
+    } else if (currentEntity === 'table') {
+        // Tables do NOT upload images — send JSON
+        const formData = new FormData(crudForm);
+        const payload = {};
+        formData.forEach((value, key) => {
+            if (value !== null && value !== undefined && value !== "") payload[key] = value;
+        });
+        if (currentMode === 'edit') url += `/${currentId}`;
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify(payload);
+    }
+
+    else if (currentEntity === 'user') {
         // User không upload file, dùng JSON
         const formData = new FormData(crudForm);
         body = {};
@@ -199,8 +208,8 @@ async function handleSubmitCrud() {
     try {
         const response = await fetch(url, {
             method: method,
-            // Header Content-Type không cần cho FormData, cần cho JSON
-            ...(currentEntity === 'user' ? { headers } : {}), 
+            // Include headers when present (JSON bodies)
+            ...((Object.keys(headers).length) ? { headers } : {}), 
             // **QUAN TRỌNG:** Phải thêm credentials: 'include'
             credentials: 'include', 
             body: body
@@ -323,13 +332,13 @@ function renderTableTable(tables) {
             id: t.id,
             name: t.name,
             status: t.status,
-            image: t.image // URL ảnh hiện tại
+            
         };
         row.innerHTML = `
             <td>${t.id}</td>
             <td>${t.name}</td>
             <td>${t.status}</td>
-            <td>${t.image ? `<img src="${t.image}" alt="Ảnh" style="width: 50px;">` : 'N/A'}</td>
+            
             <td>
                 <button onclick="openModal('table', 'edit', ${JSON.stringify(dataForModal).replace(/"/g, '&quot;')})">Sửa</button>
                 <button onclick="handleDelete('table', ${t.id})" style="background-color: #f44336; border: none; color: white;">Xóa</button>
