@@ -1,0 +1,153 @@
+openapi: 3.0.3
+info:
+  title: sever_ProjectII API
+  version: 1.0.0
+  description: API spec for the restaurant + VNPAY integration backend
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/login:
+    post:
+      summary: Login with username/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login success; returns username & role
+        '401':
+          description: Unauthorized
+  /api/users:
+    get:
+      summary: List users (manager only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Array of users
+    post:
+      summary: Create user (manager only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: Created
+  /api/products:
+    get:
+      summary: List products
+      responses:
+        '200':
+          description: Array of products
+    post:
+      summary: Create product (manager)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '201':
+          description: Created
+  /order/create_payment_url:
+    post:
+      summary: Create VNPAY payment URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                  example: 100000
+      responses:
+        '200':
+          description: Returns payment URL
+  /order/querydr:
+    post:
+      summary: Query transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transactionId:
+                  type: string
+      responses:
+        '200':
+          description: Query result
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+    UserCreate:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+      required:
+        - username
+        - password
+        - role
+    ProductCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        price:
+          type: number
+        category_id:
+          type: integer
+        image:
+          type: string
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+        image:
+          type: string
+    Table:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string

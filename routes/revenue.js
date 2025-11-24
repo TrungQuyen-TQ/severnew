@@ -11,9 +11,10 @@ router.get('/', async (req, res) => {
   }
 
   try {
+    // === SỬA LỖI: Xóa bớt 1 chữ SELECT thừa ===
     const [rows] = await db.query(`
       SELECT 
-        DATE(o.created_at) AS date,
+        DATE_FORMAT(o.created_at, '%Y-%m-%d') AS date,
         SUM(od.quantity * p.price) AS revenue
       FROM orders o
       JOIN order_details od ON o.id = od.order_id
@@ -21,8 +22,8 @@ router.get('/', async (req, res) => {
       WHERE o.status = 'PAID'
         AND MONTH(o.created_at) = ?
         AND YEAR(o.created_at) = ?
-      GROUP BY DATE(o.created_at)
-      ORDER BY DATE(o.created_at);
+      GROUP BY date
+      ORDER BY date;
     `, [month, year]);
 
     const total = rows.reduce((sum, r) => sum + Number(r.revenue), 0);
